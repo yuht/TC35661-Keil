@@ -1,5 +1,5 @@
-#ifndef __USART_H
-#define __USART_H
+#ifndef __STM32_USART_H
+#define __STM32_USART_H
 #include "stdio.h"
 #include "string.h"
 //////////////////////////////////////////////////////////////////////////////////	 

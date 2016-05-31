@@ -7,7 +7,7 @@
 
   <Targets>
     <Target>
-      <TargetName>GPRS发送数据</TargetName>
+      <TargetName>TC35661</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
       <pCCUsed>5060061::V5.06 update 1 (build 61)::ARMCC</pCCUsed>
@@ -48,7 +48,7 @@
             <InvalidFlash>1</InvalidFlash>
           </TargetStatus>
           <OutputDirectory>..\Object\</OutputDirectory>
-          <OutputName>gprs发送数据</OutputName>
+          <OutputName>TC35661</OutputName>
           <CreateExecutable>1</CreateExecutable>
           <CreateLib>0</CreateLib>
           <CreateHexFile>1</CreateHexFile>
@@ -186,7 +186,7 @@
             <hadIRAM2>0</hadIRAM2>
             <hadIROM2>0</hadIROM2>
             <StupSel>8</StupSel>
-            <useUlib>1</useUlib>
+            <useUlib>0</useUlib>
             <EndSel>0</EndSel>
             <uLtcg>0</uLtcg>
             <nSecure>0</nSecure>
@@ -332,7 +332,7 @@
               <MiscControls></MiscControls>
               <Define>STM32F10X_MD,USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>..\HARDWARE\LED;..\SYSTEM\delay;..\SYSTEM\sys;..\SYSTEM\usart;..\USER;..\STM32F10x_FWLib\inc;..\CORE;..\HARDWARE\KEY;..\HARDWARE\TIMER;..\HARDWARE\SYSH;..\HARDWARE\5110;..\bt_src;..\bt_src\drivers;..\bt_src\drivers\bluetooth;..\bt_src\drivers\fc;..\bt_src\tasks;..\bt_src\xlib;..\bt_src\xlib\core</IncludePath>
+              <IncludePath>..\HARDWARE\LED;..\SYSTEM\delay;..\SYSTEM\sys;..\SYSTEM\stm32_usart;..\USER;..\STM32F10x_FWLib\inc;..\CORE;..\HARDWARE\KEY;..\HARDWARE\TIMER;..\HARDWARE\SYSH;..\HARDWARE\5110;..\bt_src;..\bt_src\drivers;..\bt_src\drivers\bluetooth;..\bt_src\drivers\fc;..\bt_src\tasks;..\bt_src\xlib;..\bt_src\xlib\core</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -372,71 +372,6 @@
         </TargetArmAds>
       </TargetOption>
       <Groups>
-        <Group>
-          <GroupName>USER</GroupName>
-          <Files>
-            <File>
-              <FileName>main.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\main.c</FilePath>
-            </File>
-            <File>
-              <FileName>stm32f10x_it.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\stm32f10x_it.c</FilePath>
-            </File>
-            <File>
-              <FileName>system_stm32f10x.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\system_stm32f10x.c</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>HARDWARE</GroupName>
-          <Files>
-            <File>
-              <FileName>led.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\LED\led.c</FilePath>
-            </File>
-            <File>
-              <FileName>key.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\KEY\key.c</FilePath>
-            </File>
-            <File>
-              <FileName>timer.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\TIMER\timer.c</FilePath>
-            </File>
-            <File>
-              <FileName>5110LCD.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\5110\5110LCD.c</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>SYSTEM</GroupName>
-          <Files>
-            <File>
-              <FileName>delay.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\SYSTEM\delay\delay.c</FilePath>
-            </File>
-            <File>
-              <FileName>sys.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\SYSTEM\sys\sys.c</FilePath>
-            </File>
-            <File>
-              <FileName>usart.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\SYSTEM\usart\usart.c</FilePath>
-            </File>
-          </Files>
-        </Group>
         <Group>
           <GroupName>CORE</GroupName>
           <Files>
@@ -488,7 +423,72 @@
           </Files>
         </Group>
         <Group>
-          <GroupName>Bt_src</GroupName>
+          <GroupName>HARDWARE</GroupName>
+          <Files>
+            <File>
+              <FileName>led.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\LED\led.c</FilePath>
+            </File>
+            <File>
+              <FileName>key.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\KEY\key.c</FilePath>
+            </File>
+            <File>
+              <FileName>timer.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\TIMER\timer.c</FilePath>
+            </File>
+            <File>
+              <FileName>5110LCD.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\5110\5110LCD.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>SYSTEM</GroupName>
+          <Files>
+            <File>
+              <FileName>delay.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\SYSTEM\delay\delay.c</FilePath>
+            </File>
+            <File>
+              <FileName>sys.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\SYSTEM\sys\sys.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32_usart.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\SYSTEM\stm32_usart\stm32_usart.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>USER</GroupName>
+          <Files>
+            <File>
+              <FileName>main.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\main.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f10x_it.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\stm32f10x_it.c</FilePath>
+            </File>
+            <File>
+              <FileName>system_stm32f10x.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\system_stm32f10x.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>bt_src</GroupName>
           <Files>
             <File>
               <FileName>common.h</FileName>
@@ -521,16 +521,6 @@
               <FilePath>..\bt_src\xlib\core\usart.cpp</FilePath>
             </File>
             <File>
-              <FileName>bt.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\bt_src\drivers\bluetooth\bt.h</FilePath>
-            </File>
-            <File>
-              <FileName>bt.cpp</FileName>
-              <FileType>8</FileType>
-              <FilePath>..\bt_src\drivers\bluetooth\bt.cpp</FilePath>
-            </File>
-            <File>
               <FileName>pan1026.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\bt_src\drivers\bluetooth\pan1026.h</FilePath>
@@ -549,6 +539,16 @@
               <FileName>pan1322.cpp</FileName>
               <FileType>8</FileType>
               <FilePath>..\bt_src\drivers\bluetooth\pan1322.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>bt.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\bt_src\drivers\bluetooth\bt.h</FilePath>
+            </File>
+            <File>
+              <FileName>bt.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\bt_src\drivers\bluetooth\bt.cpp</FilePath>
             </File>
           </Files>
         </Group>

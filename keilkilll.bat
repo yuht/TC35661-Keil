@@ -24,6 +24,10 @@ del *.iex /s
 del *.htm /s
 del *.sct /s
 del *.map /s
-del Listing /f
-del Object /f
+del *.uvoptx /s
+del *.uvguix.* /s
+del *.dbgconf /s
+
+del Listing /f /q
+del Object /f /q
 exit

@@ -39,7 +39,7 @@ typedef long int int64_t;
 
 typedef uint8_t register8_t;
 
-uint32_t task_get_ms_tick();
+extern uint32_t task_get_ms_tick(void );
 
 /* Universal Synchronous/Asynchronous Receiver/Transmitter */
 typedef struct USART_struct

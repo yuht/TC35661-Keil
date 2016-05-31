@@ -1,7 +1,5 @@
-/***********************************************************
-酷学之家 http://simcom.taobao.com/
-联系方式：15296811438 林工
-*************************************************************/
+
+
 #include "sys.h"
   
 //加入以下代码,支持printf函数,而不需要选择use MicroLIB
@@ -16,16 +14,23 @@ struct __FILE
 
 FILE __stdout;       
 //定义_sys_exit()以避免使用半主机模式    
-_sys_exit(int x) 
+
+void _ttywrch(int ch)
+{
+    while((USART1->SR&0X40)==0);//循环发送,直到发送完毕    
+    USART1->DR = (u8) ch;  
+}
+
+int _sys_exit(int x) 
 { 
-	x = x; 
+	return 0;
 } 
 //重定义fputc函数 
 int fputc(int ch, FILE *f)
 {      
-	while((USART1->SR&0X40)==0);//循环发送,直到发送完毕   
+	while((USART1->SR&0X40)==0);//循环发送,直到发送完毕    
     USART1->DR = (u8) ch;      
-	return ch;
+	return 0;
 }
 #endif 
 
