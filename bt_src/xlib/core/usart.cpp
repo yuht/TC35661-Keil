@@ -21,11 +21,11 @@ void Usart::InitBuffers(XLIB_USE_CORE_USART_INIT_VAR rx_size, XLIB_USE_CORE_USAR
 
 Usart::~Usart()
 {
-	//free buffers
-	if (this->rx_buffer_size)
-		delete[] this->rx_buffer;
-	if (this->tx_buffer_size)
-		delete[] this->tx_buffer;
+//	//free buffers
+//	if (this->rx_buffer_size)
+//		delete[] this->rx_buffer;
+//	if (this->tx_buffer_size)
+//		delete[] this->tx_buffer;
 }
 
 /**
@@ -39,7 +39,7 @@ Usart::~Usart()
  *
  * \note There are predefined usart modules like usart0, usart1 which contains usart and port structure, tx pin number and module index
  */
-void Usart::Init(USART_t * usart, PORT_t * port, uint8_t tx, uint8_t n, uint32_t baud)
+void Usart::Init(uint8_t usart,uint32_t baud)
 {
 //	//TODO:why is 1M not working?
 //	uint32_t new_baud;
@@ -169,8 +169,8 @@ bool Usart::isRxBufferEmpty()
 void Usart::ClearRxBuffer()
 {
 	//wait to send all data
-	this->rx_len = 0;
-	this->rx_index = 0;
+//	this->rx_len = 0;
+//	this->rx_index = 0;
 }
 
 
