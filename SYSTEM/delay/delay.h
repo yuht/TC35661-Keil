@@ -1,6 +1,11 @@
 #ifndef __DELAY_H
 #define __DELAY_H 			   
 #include "stm32f10x.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //////////////////////////////////////////////////////////////////////////////////	 
 //本程序只供学习使用，未经作者许可，不得用于其它任何用途
 //Mini STM32开发板
@@ -23,33 +28,10 @@ extern void delay_ms(u16 nms);
 extern void delay_us(u32 nus);
 extern void delay_s(u16 ns);
 
+
+#ifdef __cplusplus
+}
 #endif
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#endif
 

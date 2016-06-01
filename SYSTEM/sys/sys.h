@@ -9,7 +9,7 @@
 #include "key.h"
 #include "stm32_usart.h"
 #include "string.h"
-#include"5110LCD.h"
+#include "5110LCD.h"
 
 #define BITBAND(addr, bitnum) ((addr & 0xF0000000)+0x2000000+((addr &0xFFFFF)<<5)+(bitnum<<2)) 
 #define MEM_ADDR(addr)  *((volatile unsigned long  *)(addr)) 
@@ -61,3 +61,4 @@ void NVIC_Configuration(void);
 
 
 #endif
+

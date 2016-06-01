@@ -1,7 +1,7 @@
 #ifndef __LED_H
 #define __LED_H	 
-#include "stm32f10x.h"
-
+//#include "stm32f10x.h"
+#include "sys.h"
 
 //LED¶Ë¿Ú¶¨Òå
 #define LED1 PCout(0)// PC0

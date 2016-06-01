@@ -1,7 +1,6 @@
+
 #include "common.h"
 #include "usart.h"
-Usart * usarts[7];
-extern uint32_t freq_cpu;
 
 
 
@@ -9,7 +8,7 @@ Usart::Usart()
 {
 }
 
-void Usart::InitBuffers(XLIB_USE_CORE_USART_INIT_VAR rx_size, XLIB_USE_CORE_USART_INIT_VAR tx_size)
+void Usart::InitBuffers(uint8_t rx_size, uint8_t tx_size)
 {
 	//init buffers
 //	if ((this->rx_buffer_size = rx_size) && this->rx_buffer == NULL)
@@ -28,17 +27,17 @@ Usart::~Usart()
 //		delete[] this->tx_buffer;
 }
 
-/**
- * Initialize usart
- *
- * \param usart Usart structure
- * \param port Port structure
- * \param tx Number of tx pin
- * \param n Object index for ISR handling
- * \param baud Baudrate
- *
- * \note There are predefined usart modules like usart0, usart1 which contains usart and port structure, tx pin number and module index
- */
+///**
+// * Initialize usart
+// *
+// * \param usart Usart structure
+// * \param port Port structure
+// * \param tx Number of tx pin
+// * \param n Object index for ISR handling
+// * \param baud Baudrate
+// *
+// * \note There are predefined usart modules like usart0, usart1 which contains usart and port structure, tx pin number and module index
+// */
 void Usart::Init(uint8_t usart,uint32_t baud)
 {
 //	//TODO:why is 1M not working?

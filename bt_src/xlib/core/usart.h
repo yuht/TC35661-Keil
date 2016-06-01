@@ -3,7 +3,7 @@
 
 #include "../../common.h"
 
-#define XLIB_USE_CORE_USART_INIT_VAR uint8_t
+//#define XLIB_USE_CORE_USART_INIT_VAR uint8_t
 
 class Usart //! Object for communication using usart modules
 {
@@ -21,7 +21,7 @@ public:
 	volatile uint8_t rx_ovf;
 
 	void Init(uint8_t  usart,uint32_t baud);
-	void InitBuffers(XLIB_USE_CORE_USART_INIT_VAR rx_size, XLIB_USE_CORE_USART_INIT_VAR tx_size);
+	void InitBuffers(uint8_t rx_size, uint8_t tx_size);
 	void Stop();
 
 	void TxComplete();
@@ -41,7 +41,7 @@ public:
 
 };
 
-typedef void (*usart_event_cb_t)(Usart *);
+//typedef void (*usart_event_cb_t)(Usart *);
 
 
 #endif /* USART_H_ */
