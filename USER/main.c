@@ -7,7 +7,7 @@
 
 //***********************************************************
 #define GSM_RST PAout(12)
-#define STR(A) (unsigned char*)(A)
+#define STR(A) 	(unsigned char*)(A)
 
 void RCC_Configuration(void);
 
@@ -15,22 +15,24 @@ int main ( void )
 {
 	SystemInit();//系统时钟等初始化
 
-	//delay_init ( 72 );	  //延时初始化
-	if(SysTick_Config(1*7200000))	 //配置错误返回1,max 16777216   默认72Mhz 时钟 ,100ms延时
-	{							
-		LED2_ON; 	//错误处理 								
-	}
-	SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK_Div8);
+//	delay_init ( 72 );	  //延时初始化
 
+	
+	LED_Init();	 //LED端口初始化
 	NVIC_Configuration();//设置NVIC中断分组2:2位抢占优先级，2位响应优先级
 	Uart1Init ( 115200 ); //串口初始化为115200
 	Uart2Init ( 115200 ); //串口初始化为115200
-//	Uart3Init(115200);//串口初始化为115200
+	Uart3Init ( 115200 );//串口初始化为115200
 
 
-	RCC_APB2PeriphClockCmd ( RCC_APB2Periph_GPIOB, ENABLE );
-	RCC_APB2PeriphClockCmd ( RCC_APB2Periph_GPIOD, ENABLE );
-	RCC_APB2PeriphClockCmd ( RCC_APB2Periph_GPIOC, ENABLE );
+//	RCC_APB2PeriphClockCmd ( RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD , ENABLE );
+//	RCC_APB2PeriphClockCmd ( RCC_APB2Periph_GPIOC, ENABLE );
+//	RCC_APB2PeriphClockCmd ( RCC_APB2Periph_GPIOD, ENABLE );
+	if(SysTick_Config(72000*100))	 //配置错误返回1,max 16777216   默认72Mhz 时钟 ,100ms延时
+	{							
+		LED4_ON; 	//错误处理 		
+		while(1);
+	}
 	
 //	GPIO_Configuration_LCD();
 //	GPIO_ResetBits ( GPIOC, GPIO_Pin_10 );
@@ -43,7 +45,7 @@ int main ( void )
 //	LCD_WriteString_en ( 3, 3, PSTR("gsm starting") );
 //	LCD_WriteString_en ( 4, 4, PSTR("gsm starting") );
 //	Timerx_Init ( 1000, 7199 ); //10Khz的计数频率，1000次为10ms
-	LED_Init();	 //LED端口初始化
+
 
 	LED1_ON;
 	LED2_ON;
@@ -55,24 +57,26 @@ int main ( void )
 	LED3_OFF;
 	LED4_OFF;
 	
-	GSM_RST = 0; //启动GSM模块
+//	GSM_RST = 0; //启动GSM模块
 
 	C_bt_init();
 	C_bt_module_reset();
 	C_bt_module_init();
 
 	CleanGsmRcv();
-//	Uart1SendStr(STR("init \r\n"));
+	Uart1SendStr(STR("usart1 init \r\n"));
+	Uart2SendStr(STR("usart2 init \r\n"));
+	Uart3SendStr(STR("usart3 init \r\n"));
 //	printf("test printf function: %s\r\n","abc");
 	while(1)
 	{
 		LED1_ON;
-		delay_ms(500);
+//		delay_ms(500);
 		LED1_OFF;
-		delay_ms(500);
+//		delay_ms(500);
 		
 	}
-	
+	return 0;
 	
 //	//
 //	while(1);
@@ -140,8 +144,3 @@ int main ( void )
 //	}
 
 }
-
-
-
-
- 
