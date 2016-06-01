@@ -25,8 +25,8 @@ del *.iex /s
 del *.htm /s
 del *.sct /s
 del *.map /s
-del *.uvoptx /s
-::del *.uvguix.* /s  ::默认不删除工程配置文件
+::del *.uvoptx /s  ::默认不删除工程配置文件
+del *.uvguix.* /s  
 del *.dbgconf /s
 
 del Listing /f /q
