@@ -68,8 +68,10 @@ void Uart1Init(u32 bound){
 	USART_InitTypeDef USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 	 
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1|RCC_APB2Periph_GPIOA|RCC_APB2Periph_AFIO, ENABLE);
-     //USART1_TX   PA.9
+
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_AFIO | RCC_APB2Periph_USART1, ENABLE);
+	
+	//USART1_TX   PA.9
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
@@ -83,8 +85,8 @@ void Uart1Init(u32 bound){
    //Usart1 NVIC 配置
 
     NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority=3;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;		//
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority=0;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;		//
 
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;			//IRQ通道使能
 	NVIC_Init(&NVIC_InitStructure);	//根据NVIC_InitStruct中指定的参数初始化外设NVIC寄存器USART1
@@ -98,6 +100,7 @@ void Uart1Init(u32 bound){
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
 	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
 
+	USART_DeInit(USART1);
     USART_Init(USART1, &USART_InitStructure);
    
 
@@ -155,8 +158,8 @@ void Uart2Init(u32 bound)
 	USART_InitTypeDef USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 	 
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA|RCC_APB2Periph_AFIO, ENABLE);
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_AFIO | RCC_APB1Periph_USART2, ENABLE);
+
      //USART2_TX   PA.2
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
@@ -168,7 +171,7 @@ void Uart2Init(u32 bound)
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
     GPIO_Init(GPIOA, &GPIO_InitStructure);  
 
-   //Usart1 NVIC 配置
+   //Usart2 NVIC 配置
 
     NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority=0;
@@ -250,9 +253,9 @@ void Uart3Init(u32 bound)
 	USART_InitTypeDef USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 	
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);  
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3 , ENABLE);
-     //USART3_TX   PB.10
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO | RCC_APB1Periph_USART3, ENABLE);  
+
+	//USART3_TX   PB.10
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
@@ -266,23 +269,24 @@ void Uart3Init(u32 bound)
    //Usart3 NVIC 配置
 
     NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority=3;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;		//
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority=0;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;		//
 
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;			//IRQ通道使能
 	NVIC_Init(&NVIC_InitStructure);	//根据NVIC_InitStruct中指定的参数初始化外设NVIC寄存器USART3
   
    //USART 初始化设置
 
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, ENABLE);  //RCC_APB1_USART3使能
-	USART_InitStructure.USART_BaudRate = 9600;  //波特率
+	USART_InitStructure.USART_BaudRate = bound;  //波特率
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;  //数据字长8
 	USART_InitStructure.USART_StopBits = USART_StopBits_1;  //停止位为1
 	USART_InitStructure.USART_Parity = USART_Parity_No;  //奇偶失能
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
 	USART_InitStructure.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;  //发送使能  接收使能
+	
+	USART_DeInit(USART3);
 	USART_Init(USART3, &USART_InitStructure);
-
+	
     USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);//开启中断
    
     USART_Cmd(USART3, ENABLE);                    //使能串口
