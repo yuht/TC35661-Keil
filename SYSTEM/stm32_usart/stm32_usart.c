@@ -54,12 +54,15 @@ int GetKey (void)  {
 
 u8 GsmRcv[MAXRCV] = {0};
 u16 GsmRcvCnt = 0;
-u16 Debug1RcvCnt = 0;
+
 u8 DebugBuf_U1[MAXBUF] = {0};
+u16 Debug1RcvCnt = 0;
 
 u8 DebugBuf_U2[MAXBUF] = {0};
 u16 Debug2RcvCnt = 0;
 
+u8 DebugBuf_U3[MAXBUF] = {0};
+u16 Debug3RcvCnt = 0;
 
 
 void Uart1Init(u32 bound){
@@ -68,10 +71,8 @@ void Uart1Init(u32 bound){
 	USART_InitTypeDef USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 	 
-
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_AFIO | RCC_APB2Periph_USART1, ENABLE);
-	
-	//USART1_TX   PA.9
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1|RCC_APB2Periph_GPIOA|RCC_APB2Periph_AFIO, ENABLE);
+     //USART1_TX   PA.9
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
@@ -85,8 +86,8 @@ void Uart1Init(u32 bound){
    //Usart1 NVIC 配置
 
     NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority=0;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;		//
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority=3;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;		//
 
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;			//IRQ通道使能
 	NVIC_Init(&NVIC_InitStructure);	//根据NVIC_InitStruct中指定的参数初始化外设NVIC寄存器USART1
@@ -100,7 +101,6 @@ void Uart1Init(u32 bound){
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
 	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
 
-	USART_DeInit(USART1);
     USART_Init(USART1, &USART_InitStructure);
    
 
@@ -112,18 +112,15 @@ void Uart1Init(u32 bound){
 
 void Uart1SendHex(u8 ch)
 {
-	while((USART1->SR&0X40)==0);//循环发送,直到发送完毕   
-    USART1->DR = (u8) ch; 
+	while(USART_GetFlagStatus(USART1,USART_FLAG_TC) == RESET);
+	USART_SendData(USART1,ch);
 }
 
 void Uart1SendStr(u8* str)
 {
-	u16 cnt=0;
-	while(*(str+cnt))	//判断一串数据是否结束
+	while(*str)	//判断一串数据是否结束
 	{
-		while((USART1->SR&0X40)==0);//循环发送,直到发送完毕   
-	    USART1->DR = *(str+cnt);
-		cnt++;	//准备发送一个数据
+		Uart1SendHex(*(str++));
 	}
 }
 
@@ -145,7 +142,7 @@ void USART1_IRQHandler(void)                	//串口1中断服务程序
 		}
 //#endif
 
-
+		USART_ClearFlag(USART1,USART_IT_RXNE);
 		
 	}
 }
@@ -158,8 +155,8 @@ void Uart2Init(u32 bound)
 	USART_InitTypeDef USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 	 
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_AFIO | RCC_APB1Periph_USART2, ENABLE);
-
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA|RCC_APB2Periph_AFIO, ENABLE);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
      //USART2_TX   PA.2
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
@@ -229,18 +226,15 @@ void USART2_IRQHandler(void)                	//串口3中断服务程序
 
 void Uart2SendHex(u8 ch)
 {
-		while (USART_GetFlagStatus(USART2, USART_FLAG_TC) == RESET);//发送完毕
-		USART_SendData(USART2, ch);
+	while (USART_GetFlagStatus(USART2, USART_FLAG_TC) == RESET);//发送完毕
+	USART_SendData(USART2, ch);
 }
 
 void Uart2SendStr(u8* str)
 {
-	u16 cnt=0;
-	while(*(str+cnt))	//判断一串数据是否结束
+	while(*str)	//判断一串数据是否结束
 	{
-		while (USART_GetFlagStatus(USART2, USART_FLAG_TC) == RESET);//发送完毕
-		USART_SendData(USART2, *(str+cnt));
-		cnt++;	//准备发送一个数据
+		Uart2SendHex(*(str++));
 	}
 }
 
@@ -253,9 +247,9 @@ void Uart3Init(u32 bound)
 	USART_InitTypeDef USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 	
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO | RCC_APB1Periph_USART3, ENABLE);  
-
-	//USART3_TX   PB.10
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);  
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3 , ENABLE);
+     //USART3_TX   PB.10
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
@@ -269,24 +263,23 @@ void Uart3Init(u32 bound)
    //Usart3 NVIC 配置
 
     NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority=0;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;		//
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority=3;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;		//
 
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;			//IRQ通道使能
 	NVIC_Init(&NVIC_InitStructure);	//根据NVIC_InitStruct中指定的参数初始化外设NVIC寄存器USART3
   
    //USART 初始化设置
 
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, ENABLE);  //RCC_APB1_USART3使能
 	USART_InitStructure.USART_BaudRate = bound;  //波特率
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;  //数据字长8
 	USART_InitStructure.USART_StopBits = USART_StopBits_1;  //停止位为1
 	USART_InitStructure.USART_Parity = USART_Parity_No;  //奇偶失能
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
 	USART_InitStructure.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;  //发送使能  接收使能
-	
-	USART_DeInit(USART3);
 	USART_Init(USART3, &USART_InitStructure);
-	
+
     USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);//开启中断
    
     USART_Cmd(USART3, ENABLE);                    //使能串口
@@ -294,23 +287,38 @@ void Uart3Init(u32 bound)
 
 void USART3_IRQHandler(void)                	//串口3中断服务程序
 {
+	u8 tmp;
+	if(USART_GetITStatus(USART3, USART_IT_RXNE) != RESET)  //接收中断
+	{
+		tmp =USART_ReceiveData(USART3);//(USART3->DR);	//读取接收到的数据
 
+//#ifdef UART1_DEBUG
+		//将接收到的数据放入DebugBuf_U1，在定时器内，DebugBuf_U1会被串口2发送给GSM模块。
+		//这样通过串口1发送到单片机的数据GSM模块就可以收到了，主要为了调试的方便。
+		DebugBuf_U3[Debug3RcvCnt] = tmp;
+		Debug3RcvCnt++;
+		if(Debug3RcvCnt>=MAXBUF-1)
+		{
+			Debug3RcvCnt = 0;	
+		}
+//#endif
+
+		USART_ClearFlag(USART3,USART_IT_RXNE);
+		
+	}
 }
 
 void Uart3SendHex(u8 ch)
 {
-	while((USART3->SR&0X40)==0);//循环发送,直到发送完毕   
-    USART3->DR = (u8) ch; 
+	while(USART_GetFlagStatus(USART3,USART_FLAG_TC) == RESET);
+	USART_SendData(USART3,ch);
 }
 
 void Uart3SendStr(u8* str)
 {
-	u16 cnt=0;
-	while(*(str+cnt))	//判断一串数据是否结束
+	while(*str)	//判断一串数据是否结束
 	{
-		while((USART3->SR&0X40)==0);//循环发送,直到发送完毕   
-	    USART3->DR = *(str+cnt);
-		cnt++;	//准备发送一个数据
+		Uart3SendHex(*(str++));
 	}
 }
 
@@ -332,5 +340,7 @@ u8 Hand(unsigned char *a)
 	else
 		return 0;
 }
+
+ 
 
  

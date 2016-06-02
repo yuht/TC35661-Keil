@@ -26,12 +26,17 @@
 
 extern u8 GsmRcv[MAXRCV];
 extern u16 GsmRcvCnt;
-extern u16 Debug1RcvCnt;
+
 extern u8 DebugBuf_U1[MAXBUF];
+extern u16 Debug1RcvCnt;
+
 extern u8 DebugBuf_U2[MAXBUF];
 extern u16 Debug2RcvCnt;
 
-	
+extern u8 DebugBuf_U3[MAXBUF];
+extern u16 Debug3RcvCnt;
+
+
 
 void Uart1Init(u32 bound);
 void Uart1SendHex(u8 ch);

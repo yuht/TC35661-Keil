@@ -9,12 +9,16 @@
 #define GSM_RST PAout(12)
 #define STR(A) 	(unsigned char*)(A)
 
-void RCC_Configuration(void);
+
 
 int main ( void )
 {
 	SystemInit();//系统时钟等初始化
-
+	if(SysTick_Config(72000*100))	 //配置错误返回1,max 16777216   默认72Mhz 时钟 ,100ms延时
+	{							
+		LED4_ON; 	//错误处理 		
+		while(1);
+	}
 //	delay_init ( 72 );	  //延时初始化
 
 	
@@ -24,15 +28,17 @@ int main ( void )
 	Uart2Init ( 115200 ); //串口初始化为115200
 	Uart3Init ( 115200 );//串口初始化为115200
 
+	Uart1SendStr(STR("uart1 init\r\n"));
+
+	Uart2SendStr(STR("uart2 init\r\n"));
+
+	Uart3SendStr(STR("uart3 init\r\n"));
+
 
 //	RCC_APB2PeriphClockCmd ( RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD , ENABLE );
 //	RCC_APB2PeriphClockCmd ( RCC_APB2Periph_GPIOC, ENABLE );
 //	RCC_APB2PeriphClockCmd ( RCC_APB2Periph_GPIOD, ENABLE );
-	if(SysTick_Config(72000*100))	 //配置错误返回1,max 16777216   默认72Mhz 时钟 ,100ms延时
-	{							
-		LED4_ON; 	//错误处理 		
-		while(1);
-	}
+
 	
 //	GPIO_Configuration_LCD();
 //	GPIO_ResetBits ( GPIOC, GPIO_Pin_10 );
@@ -51,7 +57,7 @@ int main ( void )
 	LED2_ON;
 	LED3_ON;
 	LED4_ON;
-	//delay_s ( 1 );
+//	delay_s ( 1 );
 	LED1_OFF;
 	LED2_OFF;
 	LED3_OFF;
@@ -63,20 +69,19 @@ int main ( void )
 	C_bt_module_reset();
 	C_bt_module_init();
 
-	CleanGsmRcv();
-	Uart1SendStr(STR("usart1 init \r\n"));
-	Uart2SendStr(STR("usart2 init \r\n"));
-	Uart3SendStr(STR("usart3 init \r\n"));
+//	CleanGsmRcv();
+//	Uart1SendStr(STR("usart1 init \r\n"));
+//	Uart2SendStr(STR("usart2 init \r\n"));
+//	Uart3SendStr(STR("usart3 init \r\n"));
 //	printf("test printf function: %s\r\n","abc");
 	while(1)
 	{
-		LED1_ON;
+//		LED1_ON;
 //		delay_ms(500);
-		LED1_OFF;
+//		LED1_OFF;
 //		delay_ms(500);
 		
-	}
-	return 0;
+	} 
 	
 //	//
 //	while(1);
