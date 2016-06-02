@@ -23,8 +23,10 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f10x_it.h"
-#include "led.h"
+//#include "led.h"
 
+volatile u16 ms_delay_counter = 0;
+volatile u32 ms_timer=0;
 
 void NMI_Handler ( void )
 {
@@ -77,15 +79,19 @@ void PendSV_Handler ( void )
 
 void SysTick_Handler ( void )
 {
-	volatile uint8_t static sta;
-	sta = !sta;
-	if(sta){
-		LED2_ON;
-		LED3_OFF;
-	}else{
-		LED2_OFF;
-		LED3_ON;
-	}
+//	volatile uint8_t static sta;
+	
+	ms_delay_counter++;
+	ms_timer++;
+//	
+//	sta = !sta;
+//	if(sta){
+//		LED2_ON;
+//		LED3_OFF;
+//	}else{
+//		LED2_OFF;
+//		LED3_ON;
+//	}
 }
 
 /******************************************************************************/

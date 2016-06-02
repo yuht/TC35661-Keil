@@ -27,6 +27,8 @@
 #include "stm32f10x.h"
 
 /* Exported types ------------------------------------------------------------*/
+extern volatile u16 ms_delay_counter;
+extern volatile u32 ms_timer;
 /* Exported constants --------------------------------------------------------*/
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */

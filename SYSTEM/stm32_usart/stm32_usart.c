@@ -1,5 +1,5 @@
 
-
+#include "stdio.h"
 #include "sys.h"
   
 //加入以下代码,支持printf函数,而不需要选择use MicroLIB
@@ -52,18 +52,15 @@ int GetKey (void)  {
 }
 */
 
-u8 GsmRcv[MAXRCV] = {0};
-u16 GsmRcvCnt = 0;
 
-u8 DebugBuf_U1[MAXBUF] = {0};
-u16 Debug1RcvCnt = 0;
+u8 Uart1_Buff[MAXBUF] = {0};
+u16 Uart1_RcvCnt = 0;
 
-u8 DebugBuf_U2[MAXBUF] = {0};
-u16 Debug2RcvCnt = 0;
+u8 Uart2_Buff[MAXBUF] = {0};
+u16 Uart2_RcvCnt = 0;
 
-u8 DebugBuf_U3[MAXBUF] = {0};
-u16 Debug3RcvCnt = 0;
-
+u8 Uart3_Buff[MAXBUF] = {0};
+u16 Uart3_RcvCnt = 0;
 
 void Uart1Init(u32 bound){
     //GPIO端口设置
@@ -130,19 +127,15 @@ void USART1_IRQHandler(void)                	//串口1中断服务程序
 	if(USART_GetITStatus(USART1, USART_IT_RXNE) != RESET)  //接收中断
 	{
 		tmp =USART_ReceiveData(USART1);//(USART1->DR);	//读取接收到的数据
-
-//#ifdef UART1_DEBUG
-		//将接收到的数据放入DebugBuf_U1，在定时器内，DebugBuf_U1会被串口2发送给GSM模块。
-		//这样通过串口1发送到单片机的数据GSM模块就可以收到了，主要为了调试的方便。
-		DebugBuf_U1[Debug1RcvCnt] = tmp;
-		Debug1RcvCnt++;
-		if(Debug1RcvCnt>=MAXBUF-1)
+		
+		if(Uart1_RcvCnt > MAXBUF)
 		{
-			Debug1RcvCnt = 0;	
+			Uart1_RcvCnt = 0;	
 		}
-//#endif
-
-		USART_ClearFlag(USART1,USART_IT_RXNE);
+		
+		Uart1_Buff[Uart1_RcvCnt++] = tmp;
+		
+		USART_ClearITPendingBit(USART1,USART_IT_RXNE);
 		
 	}
 }
@@ -203,24 +196,14 @@ void USART2_IRQHandler(void)                	//串口3中断服务程序
 	{
 		tmp = USART_ReceiveData(USART2);//(USART1->DR);	//读取接收到的数据
 
-		GsmRcv[GsmRcvCnt] = tmp;
-		GsmRcvCnt++;
-		if(GsmRcvCnt > MAXRCV)
+		if(Uart2_RcvCnt > MAXBUF)
 		{
-			GsmRcvCnt = 0;
+			Uart2_RcvCnt = 0;	
 		}
-				
-//#ifdef UART1_DEBUG
-		//将接收到的数据放入DebugBuf_U3，在定时器内，DebugBuf_U3会被串口1发送给GSM模块。
-		//这样通过串口1发送到单片机的数据GSM模块就可以收到了，主要为了调试的方便。
-		DebugBuf_U2[Debug2RcvCnt] = tmp;
-		Debug2RcvCnt++;
-		if(Debug2RcvCnt>=MAXBUF-1)
-		{
-			Debug2RcvCnt = 0;	
-		}
-//#endif
 		
+		Uart2_Buff[Uart2_RcvCnt++] = tmp;
+		
+		USART_ClearITPendingBit(USART2,USART_IT_RXNE);
 	}
 }
 
@@ -292,19 +275,14 @@ void USART3_IRQHandler(void)                	//串口3中断服务程序
 	{
 		tmp =USART_ReceiveData(USART3);//(USART3->DR);	//读取接收到的数据
 
-//#ifdef UART1_DEBUG
-		//将接收到的数据放入DebugBuf_U1，在定时器内，DebugBuf_U1会被串口2发送给GSM模块。
-		//这样通过串口1发送到单片机的数据GSM模块就可以收到了，主要为了调试的方便。
-		DebugBuf_U3[Debug3RcvCnt] = tmp;
-		Debug3RcvCnt++;
-		if(Debug3RcvCnt>=MAXBUF-1)
+		if(Uart3_RcvCnt > MAXBUF)
 		{
-			Debug3RcvCnt = 0;	
+			Uart3_RcvCnt = 0;	
 		}
-//#endif
-
-		USART_ClearFlag(USART3,USART_IT_RXNE);
 		
+		Uart3_Buff[Uart3_RcvCnt++] = tmp;
+		
+		USART_ClearITPendingBit(USART1,USART_IT_RXNE);
 	}
 }
 
@@ -321,26 +299,3 @@ void Uart3SendStr(u8* str)
 		Uart3SendHex(*(str++));
 	}
 }
-
-void CleanGsmRcv(void)
-{
-	u16 i = 0;
-	for(i=0; i<=MAXRCV; i++)
-	{
-		GsmRcv[i] = 0;	
-	}
-
-	GsmRcvCnt = 0;	
-}
-
-u8 Hand(unsigned char *a)
-{ 
-    if(strstr((const char *)GsmRcv,(const char *)a)!=NULL)
-	    return 1;
-	else
-		return 0;
-}
-
- 
-
- 

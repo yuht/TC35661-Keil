@@ -48,19 +48,19 @@ void TIM3_IRQHandler(void)
 	{
 		TIM_ClearITPendingBit(TIM3, TIM_IT_Update);  //清除TIMx的中断待处理位:TIM 中断源
 //#ifdef UART1_DEBUG//发送数据用于调试。
-		Uart1SendStr(DebugBuf_U2);
+		Uart1SendStr(Uart2_Buff);
 		for(i=0; i<MAXBUF; i++)
 		{
-			DebugBuf_U2[i] = 0;	
+			Uart2_Buff[i] = 0;	
 		}
-		Debug2RcvCnt = 0;
+		Uart2_RcvCnt = 0;
 
-		Uart2SendStr(DebugBuf_U1);
+		Uart2SendStr(Uart1_Buff);
 		for(i=0; i<MAXBUF; i++)
 		{
-			DebugBuf_U1[i] = 0;	
+			Uart1_Buff[i] = 0;	
 		}
-		Debug1RcvCnt = 0;
+		Uart1_RcvCnt = 0;
 
 
 //#endif		 
