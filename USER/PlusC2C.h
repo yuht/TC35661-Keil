@@ -23,6 +23,7 @@ void C_bt_module_deinit(void);
 uint8_t C_bt_device_active(void);
 
 void C_bt_send(char * str);
+void C_bt_sendBinary(char * str,uint16_t len);
 
 uint8_t C_bt_selftest(void);
 

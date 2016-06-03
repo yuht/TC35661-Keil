@@ -1,4 +1,3 @@
-
 #include "plusc2c.h"
 #include "bt.h"
 
@@ -41,6 +40,13 @@ void C_bt_send(char * str)
 {
 	bt_send(str);
 }
+
+void C_bt_sendBinary(char * str,uint16_t len)
+{
+	bt_sendBinary(str, len);
+}
+
+
 
 uint8_t C_bt_selftest(void)
 {
