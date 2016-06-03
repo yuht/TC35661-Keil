@@ -59,10 +59,13 @@ public:
 
 	void WaitForAnswer();
 	void StreamWrite(uint8_t data);
+	void StreamWriteBinary(uint8_t data);
 	void RawSendStatic(const uint8_t * data, uint8_t len);
+	void RawSendStaticBinary(const uint8_t * data, uint8_t len);
+
 
 	void SendString(char * str);
-
+	void SendBinary(char * str,uint16_t len);
 	uint8_t pan_mac_address[6];
 	uint8_t random_address[6];
 

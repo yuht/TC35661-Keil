@@ -10,13 +10,6 @@ CreateStdOut(bt_pan1026_out, bt_pan1026.StreamWrite);
 #define BT_TIMEOUT			1000
 #define BT_NO_TIMEOUT		0
 
-//#define DEBUG_BT_ENABLED
-
-#ifdef DEBUG_BT_ENABLED
-	#define DEBUG_BT(...) DEBUG(__VA_ARGS__)
-#else
-	#define DEBUG_BT(...)
-#endif
 
 #define SERVICE_GENERIC	0
 #define SERVICE_DEVICE	1
@@ -91,6 +84,13 @@ void pan1026::StreamWrite(uint8_t data)
 	this->usart->Write(data);
 }
 
+
+void pan1026::StreamWriteBinary(uint8_t data)
+{
+	this->usart->WriteBinary(data);
+}
+
+
 void pan1026::Init(Usart * uart)
 {
 	this->usart = uart;
@@ -126,8 +126,9 @@ void pan1026::ParseHCI()
 
 #ifdef DEBUG_BT_ENABLED
 	DEBUG_BT("\r\n - HCI ----\r\n");
-	for (uint8_t i = 0; i < this->parser_packet_length; i++)
+	for (uint8_t i = 0; i < this->parser_packet_length; i++){
 		DEBUG_BT("%02X ", this->parser_buffer[i]);
+	}
 	DEBUG_BT("\r\n");
 #endif
 
@@ -242,9 +243,12 @@ void pan1026::ParseHCI()
 							{
 								DEBUG_BT("MAC: ");
 								memcpy(this->pan_mac_address, this->parser_buffer + 14, 6);
-								for (uint8_t i = 0; i < 6; i++)
+						#ifdef DEBUG_BT_ENABLED
+								for (uint8_t i = 0; i < 6; i++){
 									DEBUG_BT("%02X ", this->pan_mac_address[i]);
+								}
 								DEBUG_BT("\r\n");
+						#endif
 								this->SetNextStep(pan_cmd_write_mac);
 							}
 							else
@@ -265,8 +269,9 @@ void pan1026::ParseMNG()
 
 #ifdef DEBUG_BT_ENABLED
 	DEBUG_BT("\r\n - MNG ----\r\n");
-	for (uint8_t i = 0; i < this->parser_packet_length; i++)
+	for (uint8_t i = 0; i < this->parser_packet_length; i++){
 		DEBUG_BT("%02X ", this->parser_buffer[i]);
+	}
 	DEBUG_BT("\r\n");
 #endif
 
@@ -283,8 +288,11 @@ void pan1026::ParseMNG()
 			DEBUG_BT("Connection Status: \r\n");
 			DEBUG_BT(" Status          %02X\r\n", status);
 			DEBUG_BT(" MAC             ");
-			for (uint8_t i = 0; i < 6; i++)
+		#ifdef DEBUG_BT_ENABLED
+			for (uint8_t i = 0; i < 6; i++){
 				DEBUG_BT("%02X ", this->parser_buffer[8 + 5 - i]);
+			}
+		#endif
 			DEBUG_BT("\r\n");
 			DEBUG_BT(" Connection status %02X - ", this->parser_buffer[14]);
 
@@ -348,10 +356,12 @@ void pan1026::ParseMNG()
 		case(0x55):
 			DEBUG_BT("Connection request from: \r\n ");
 			memcpy(this->client_mac_address, this->parser_buffer + 7, 6);
-			for (uint8_t i = 6; i > 0; i--)
+		#ifdef DEBUG_BT_ENABLED
+			for (uint8_t i = 6; i > 0; i--){
 				DEBUG_BT("%02X ", this->client_mac_address[i - 1]);
+			}
 			DEBUG_BT("\r\n");
-
+		#endif
 			this->SetNextStep(pan_cmd_accept_connection);
 
 		break;
@@ -414,6 +424,7 @@ void pan1026::ParseMNG()
 			{
 				DEBUG_BT("sucess\r\n");
 				//this->SetNextStep(pan_cmd_le_mng_init);
+				
 			}
 			else
 				PAN1026_ERROR;
@@ -528,8 +539,9 @@ void pan1026::ParseSPP()
 
 #ifdef DEBUG_BT_ENABLED
 	DEBUG_BT("\r\n - SPP ----\r\n");
-	for (uint8_t i = 0; i < this->parser_packet_length; i++)
+	for (uint8_t i = 0; i < this->parser_packet_length; i++){
 		DEBUG_BT("%02X ", this->parser_buffer[i]);
+	}
 	DEBUG_BT("\r\n");
 #endif
 
@@ -537,11 +549,12 @@ void pan1026::ParseSPP()
 	
 	op_code = this->parser_buffer[4];
 	status = this->parser_buffer[7];
-
+#ifdef DEBUG_BT_ENABLED
 	DEBUG_BT("op_code: %02X\r\n", op_code);
 	if(op_code != 0x48){
 		DEBUG_BT("status: %02X\r\n", status);
 	}
+#endif
 	switch(op_code)
 	{
 		case(0x81): //TCU_SPP_SETUP_RESP
@@ -570,11 +583,14 @@ void pan1026::ParseSPP()
 				uint16_t spplength = ((uint16_t)parser_buffer[6]<<8) | parser_buffer[5];
 				if(spplength){
 					uint16_t datalength = ((uint16_t)parser_buffer[8]<<8) | parser_buffer[7];
+				#ifdef DEBUG_BT
 					DEBUG_BT("\r\nspp  length: %4d" ,spplength);
 					DEBUG_BT("\r\ndata length: %4d" ,datalength);
 					DEBUG_BT("\r\ndata on usart3:");
 					this->RawSendStatic(&parser_buffer[9],datalength);
 					DEBUG_BT("\r\n");
+				#endif
+					this->RawSendStaticBinary(&parser_buffer[9],datalength);
 					
 				}
 			}
@@ -592,8 +608,9 @@ void pan1026::ParseMNG_LE()
 
 #ifdef DEBUG_BT_ENABLED
 	DEBUG_BT("\r\n - MNG LE ----\r\n");
-	for (uint8_t i = 0; i < this->parser_packet_length; i++)
+	for (uint8_t i = 0; i < this->parser_packet_length; i++){
 		DEBUG_BT("%02X ", this->parser_buffer[i]);
+	}
 	DEBUG_BT("\r\n");
 #endif
 
@@ -702,8 +719,9 @@ void pan1026::ParseGAT_ser()
 
 #ifdef DEBUG_BT_ENABLED
 	DEBUG_BT("\r\n - GAT ser ----\r\n");
-	for (uint8_t i = 0; i < this->parser_packet_length; i++)
+	for (uint8_t i = 0; i < this->parser_packet_length; i++){
 		DEBUG_BT("%02X ", this->parser_buffer[i]);
+	}
 	DEBUG_BT("\r\n");
 #endif
 
@@ -834,8 +852,9 @@ void pan1026::ParseGAT_cli()
 
 #ifdef DEBUG_BT_ENABLED
 	DEBUG_BT("\r\n - GAT cli ----\r\n");
-	for (uint8_t i = 0; i < this->parser_packet_length; i++)
+	for (uint8_t i = 0; i < this->parser_packet_length; i++){
 		DEBUG_BT("%02X ", this->parser_buffer[i]);
+	}
 	DEBUG_BT("\r\n");
 #endif
 
@@ -1009,6 +1028,12 @@ void pan1026::RawSendStatic(const uint8_t * data, uint8_t len)
 {
 	for(uint8_t i = 0; i < len; i++)
 		this->StreamWrite(pgm_read_byte(&data[i]));
+}
+
+void pan1026::RawSendStaticBinary(const uint8_t * data, uint8_t len)
+{
+	for(uint8_t i = 0; i < len; i++)
+		this->StreamWriteBinary(pgm_read_byte(&data[i]));
 }
 
 void pan1026::WaitForAnswer()
@@ -1506,40 +1531,40 @@ void pan1026::Step()
 				//Adv_Data_Length
 				this->StreamWrite(0x1f); //31
 				//Adv_Data (31B)
-					this->StreamWrite(0x02); //length
-					this->StreamWrite(0x01); //AD flags
-					this->StreamWrite(0x01);
+				this->StreamWrite(0x02); //length
+				this->StreamWrite(0x01); //AD flags
+				this->StreamWrite(0x01);
 
-					//128-bits uuids (SPP)
-					this->StreamWrite(0x11); //Length 0x10 * cnt + 1
-					this->StreamWrite(0x07); //Complete list of 128-bit UUIDs available.
-					RAW(spp_over_ble_service_uuid); //SPP uuid 16B
+				//128-bits uuids (SPP)
+				this->StreamWrite(0x11); //Length 0x10 * cnt + 1
+				this->StreamWrite(0x07); //Complete list of 128-bit UUIDs available.
+				RAW(spp_over_ble_service_uuid); //SPP uuid 16B
 
-					//16-bits uuids (generic_access, device_information)
-					this->StreamWrite(0x05); //Length 0x02 * cnt + 1
-					this->StreamWrite(0x03); //Complete list of 16-bit UUIDs available.
-					//generic_access
-					WRITE_16B(0x1800);
-					//device_information
-					WRITE_16B(0x180A);
+				//16-bits uuids (generic_access, device_information)
+				this->StreamWrite(0x05); //Length 0x02 * cnt + 1
+				this->StreamWrite(0x03); //Complete list of 16-bit UUIDs available.
+				//generic_access
+				WRITE_16B(0x1800);
+				//device_information
+				WRITE_16B(0x180A);
 
-					//padding (4B)
-					this->StreamWrite(0x00);
-					this->StreamWrite(0x00);
-					this->StreamWrite(0x00);
-					this->StreamWrite(0x00);
+				//padding (4B)
+				this->StreamWrite(0x00);
+				this->StreamWrite(0x00);
+				this->StreamWrite(0x00);
+				this->StreamWrite(0x00);
 
 				//Scan_Resp_Data_Len
 				this->StreamWrite(0x1f); //31
 				//Scan_Resp_Data (31B)
-					this->StreamWrite(strlen(this->label) + 1); //Length sizeof(device_name) + 1
-					this->StreamWrite(0x09); //Complete local name
-					for (uint8_t i = 0; i < strlen(this->label); i++)
-						this->StreamWrite(this->label[i]);
+				this->StreamWrite(strlen(this->label) + 1); //Length sizeof(device_name) + 1
+				this->StreamWrite(0x09); //Complete local name
+				for (uint8_t i = 0; i < strlen(this->label); i++)
+					this->StreamWrite(this->label[i]);
 
-					//padding
-					for (uint8_t i = strlen(this->label) + 2; i < 0x1f; i++)
-						this->StreamWrite(0x00);
+				//padding
+				for (uint8_t i = strlen(this->label) + 2; i < 0x1f; i++)
+					this->StreamWrite(0x00);
 			break;
 
 			case(pan_cmd_le_update_char):
@@ -1621,3 +1646,16 @@ void pan1026::SendString(char * str)
 	
 	DEBUG_BT("\r\nend.\r\n");
 }
+
+void pan1026::SendBinary(char * str,uint16_t len)
+{
+	TCU_LEN(len + 3 + 1 + 1 + 2 + 2);
+	this->StreamWrite(0xe5); //SPP
+	this->StreamWrite(0x08); //TCU_SPP_DATA_TRANSFER_REQ
+	WRITE_16B(len + 2); 	 //Parameter Length
+	WRITE_16B(len);			 //Length_of_Data
+	//data
+	for (uint16_t i = 0; i < len; i++)
+		this->StreamWrite(str[i]);
+}
+
