@@ -8,12 +8,23 @@
 #ifndef COMMON_H_
 #define COMMON_H_
 
+#define DEBUG_BT_ENABLED
 
+#ifdef DEBUG_BT_ENABLED
+	#define DEBUG_BT(...) DEBUG(__VA_ARGS__)
+#else
+	#define DEBUG_BT(...)
+#endif
 
 #include "string.h"
 #include "stdio.h"
 #include "delay.h"
 
+#define LOW			0
+#define HIGH		1
+#define BT_EN		2
+#define BT_RESET	3
+#define BT_RTS		4
 
 
 #define PROGMEM
@@ -31,10 +42,13 @@
 
 #define PSTR(A) 		(char *)(A)
 #define strcpy_P(A,B)   \
-		strcpy (A,B);	\
-		DEBUG("%s" ,A)
+		strcpy (A,"Yuht_TC35661");	\
+		DEBUG_BT("%s\r\n" ,A)
 
-#define GetID_str(destid)	strcpy(destid,"012345678") //23 b
+
+extern uint8_t device_id[11]; //11byte
+
+extern void GetID_str(char * id); //22 byte
 
 
 #define pgm_read_byte(A)	*A
@@ -51,11 +65,11 @@ extern uint32_t task_get_ms_tick(void );
  
 
 #define GpioSetDirection(a, c)
-#define GpioWrite(a, c)
+extern void GpioWrite(uint8_t Port, uint8_t Stat);
 #define GpioSetPull(A, B)
 #define GpioSetInterrupt(A, B, C)
-#define gpio_interrupt1 			0
-#define gpio_rising 				0
+#define gpio_interrupt1 		0
+#define gpio_rising 			0
 
 #define BT_UART     			0
 
@@ -71,12 +85,16 @@ extern uint32_t task_get_ms_tick(void );
 typedef struct tg2
 { 
 	uint8_t bt_link_key[16];
+	//add
+	uint8_t btle_mac[6];
+	//end add
 }cfg_connectivity;
 
 
 typedef struct tg1 
 {
 	cfg_connectivity connectivity;
+
 }cfg_t;
 
 extern volatile  cfg_t config;
