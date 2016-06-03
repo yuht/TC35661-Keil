@@ -4,8 +4,8 @@
 
 void delay_ms(u16 nms)
 {	 		  	  
-	ms_delay_counter = 0;
-	while(ms_delay_counter < nms);
+	ms_delay = 0;
+	while(ms_delay < nms);
 }
 void delay_s(u16 ns)
 {
