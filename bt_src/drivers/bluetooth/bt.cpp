@@ -5,6 +5,12 @@
 #include "pan1322.h"
 #include "pan1026.h"
 
+#ifdef DEBUG_BT_ENABLED
+	#define DEBUG_BT(...) DEBUG(__VA_ARGS__)
+#else
+	#define DEBUG_BT(...)
+#endif
+
 bool bt_autodetect = false;
 uint8_t bt_module_type = BT_PAN1322;
 
@@ -22,7 +28,7 @@ volatile uint8_t bt_module_state = BT_MOD_STATE_OFF;
 
 ISR(BT_CTS_PIN_INT)
 {
-//	DEBUG("BT CTS\n");
+//	DEBUG_BT("BT CTS\r\n");
 	if (bt_module_type == BT_PAN1322)
 		bt_pan1322.TxResume();
 
@@ -32,14 +38,14 @@ ISR(BT_CTS_PIN_INT)
 
 void bt_pan1322_init()
 {
-	DEBUG("bt_pan1322_init\n");
+	DEBUG_BT("bt_pan1322_init\r\n");
 
 	bt_pan1322.Init(&bt_uart);
 }
 
 void bt_pan1026_init()
 {
-	DEBUG("bt_pan1026_init\n");
+	DEBUG_BT("bt_pan1026_init\r\n");
 
 	bt_pan1026.Init(&bt_uart);
 }
@@ -90,7 +96,7 @@ void bt_module_init()
 
 void bt_init()
 {
-	DEBUG("bt_init\n");
+	DEBUG_BT("bt_init\r\n");
 
 	//get module type
 	eeprom_busy_wait();
@@ -132,7 +138,7 @@ void bt_unknown_parser()
 	while (!bt_uart.isRxBufferEmpty())
 	{
 		uint8_t c = bt_uart.Read();
-		DEBUG(">> %02X %c ??\n", c, c);
+		DEBUG_BT(">> %02X %c ??\r\n", c, c);
 	}
 }
 
@@ -146,7 +152,7 @@ void bt_step()
 		if (bt_reset_counter > task_get_ms_tick())
 			return;
 
-		DEBUG("BT RESET STEP: %d\n", bt_reset_counter_step);
+		DEBUG_BT("BT RESET STEP: %d\r\n", bt_reset_counter_step);
 
 		switch(bt_reset_counter_step)
 		{
@@ -214,35 +220,35 @@ void bt_irgh(uint8_t type, uint8_t * buf)
 	switch(type)
 	{
 		case(BT_IRQ_INIT):
-		DEBUG("BT_MOD_STATE_INIT\n");
+		DEBUG_BT("BT_MOD_STATE_INIT\r\n");
 			bt_module_state = BT_MOD_STATE_INIT;
 		break;
 		case(BT_IRQ_INIT_OK):
-			DEBUG("BT_MOD_STATE_OK\n");
+			DEBUG_BT("BT_MOD_STATE_OK\r\n");
 			bt_module_state = BT_MOD_STATE_OK;
 			bt_autodetect = false;
 		break;
 		case(BT_IRQ_DEINIT):
-			DEBUG("BT_MOD_STATE_OFF\n");
+			DEBUG_BT("BT_MOD_STATE_OFF\r\n");
 			bt_module_state = BT_MOD_STATE_OFF;
 			bt_device_connected = false;
 		break;
 		case(BT_IRQ_CONNECTED):
-			DEBUG("BT_IRQ_CONNECTED\n");
-			gui_showmessage_P(PSTR("Bluetooth\nconnected"));
+			DEBUG_BT("BT_IRQ_CONNECTED\r\n");
+			gui_showmessage_P(PSTR("Bluetooth connected\r\n"));
 			bt_device_connected = true;
 		break;
 		case(BT_IRQ_DISCONNECTED):
-			DEBUG("BT_IRQ_DISCONNECTED\n");
-			gui_showmessage_P(PSTR("Bluetooth\ndisconnected"));
+			DEBUG_BT("BT_IRQ_DISCONNECTED\r\n");
+			gui_showmessage_P(PSTR("Bluetooth disconnected\r\n"));
 			bt_device_connected = false;
 		break;
 		case(BT_IRQ_RESET):
-			DEBUG("BT_IRQ_RESET\n");
+			DEBUG_BT("BT_IRQ_RESET\r\n");
 			bt_device_connected = false;
 		break;
 		case(BT_IRQ_INIT_FAIL):
-			DEBUG("BT_IRQ_INIT_FAIL!\n");
+			DEBUG_BT("BT_IRQ_INIT_FAIL!\r\n");
 			if (bt_autodetect)
 			{
 				old_type = bt_module_type;
@@ -268,7 +274,7 @@ void bt_irgh(uint8_t type, uint8_t * buf)
 			}
 			else
 			{
-//				gui_showmessage_P(PSTR("Bluetooth\nInit failed!"));
+//				gui_showmessage_P(PSTR("Bluetooth\r\nInit failed!"));
 			}
 		break;
 	}
