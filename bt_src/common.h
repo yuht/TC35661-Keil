@@ -8,13 +8,15 @@
 #ifndef COMMON_H_
 #define COMMON_H_
 
-#define DEBUG_BT_ENABLED
+//#define DEBUG_BT_ENABLED
 
 #ifdef DEBUG_BT_ENABLED
 	#define DEBUG_BT(...) DEBUG(__VA_ARGS__)
 #else
 	#define DEBUG_BT(...)
 #endif
+
+
 
 #include "string.h"
 #include "stdio.h"
@@ -42,8 +44,10 @@
 
 #define PSTR(A) 		(char *)(A)
 #define strcpy_P(A,B)   \
-		strcpy (A,"Yuht_TC35661");	\
-		DEBUG_BT("%s\r\n" ,A)
+		do{\
+			strcpy (A,"Yuht_TC35661");	\
+			DEBUG_BT("%s\r\n" ,A);	\
+		}while(0);
 
 
 extern uint8_t device_id[11]; //11byte
@@ -54,7 +58,7 @@ extern void GetID_str(char * id); //22 byte
 #define pgm_read_byte(A)	*A
 #define _delay_ms(A)		delay_ms(A)
 
-
+extern void GpioWrite(uint8_t Port, uint8_t Stat);
 extern uint32_t task_get_ms_tick(void );
 
 #define CreateStdOut(file, putc)  
@@ -65,7 +69,6 @@ extern uint32_t task_get_ms_tick(void );
  
 
 #define GpioSetDirection(a, c)
-extern void GpioWrite(uint8_t Port, uint8_t Stat);
 #define GpioSetPull(A, B)
 #define GpioSetInterrupt(A, B, C)
 #define gpio_interrupt1 		0
@@ -78,8 +81,9 @@ extern void GpioWrite(uint8_t Port, uint8_t Stat);
 #define eeprom_read_byte(A) 	BT_PAN1026
 #define ISR(A)  				void UNUSEDFUNCTION_##A (void)
 
-#define gui_showmessage_P		printf
 #define DEBUG 					printf
+#define gui_showmessage_P		DEBUG_BT
+
 
 
 typedef struct tg2
