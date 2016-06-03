@@ -5,11 +5,6 @@
 #include "pan1322.h"
 #include "pan1026.h"
 
-#ifdef DEBUG_BT_ENABLED
-	#define DEBUG_BT(...) DEBUG(__VA_ARGS__)
-#else
-	#define DEBUG_BT(...)
-#endif
 
 bool bt_autodetect = false;
 uint8_t bt_module_type = BT_PAN1322;
@@ -28,7 +23,7 @@ volatile uint8_t bt_module_state = BT_MOD_STATE_OFF;
 
 ISR(BT_CTS_PIN_INT)
 {
-//	DEBUG_BT("BT CTS\r\n");
+	DEBUG_BT("BT CTS\r\n");
 	if (bt_module_type == BT_PAN1322)
 		bt_pan1322.TxResume();
 
@@ -167,16 +162,6 @@ void bt_step()
 				BT_UART_PWR_ON;
 				bt_uart.Init(BT_UART, 115200);
 				bt_uart.SetInterruptPriority(MEDIUM);
-
-//				while(1)
-//				{
-//					_delay_ms(100);
-//					bt_uart.Write(0x00);
-//					_delay_ms(1);
-//					bt_uart.Write(0xAA);
-//					ewdt_reset();
-//				}
-
 				bt_reset_counter = task_get_ms_tick() + 10;
 				bt_reset_counter_step = 2;
 			break;
@@ -212,6 +197,13 @@ void bt_send(char * str)
 	if (bt_module_type == BT_PAN1026)
 		bt_pan1026.SendString(str);
 }
+void bt_sendBinary(char * str,uint16_t len)
+{
+	if (!bt_device_connected)
+		return;
+	
+	bt_pan1026.SendBinary(str,len);
+}
 
 void bt_irgh(uint8_t type, uint8_t * buf)
 {
@@ -220,11 +212,12 @@ void bt_irgh(uint8_t type, uint8_t * buf)
 	switch(type)
 	{
 		case(BT_IRQ_INIT):
-		DEBUG_BT("BT_MOD_STATE_INIT\r\n");
+			DEBUG_BT("BT_MOD_STATE_INIT\r\n");
 			bt_module_state = BT_MOD_STATE_INIT;
 		break;
 		case(BT_IRQ_INIT_OK):
 			DEBUG_BT("BT_MOD_STATE_OK\r\n");
+			_delay_ms(10);
 			bt_module_state = BT_MOD_STATE_OK;
 			bt_autodetect = false;
 		break;
