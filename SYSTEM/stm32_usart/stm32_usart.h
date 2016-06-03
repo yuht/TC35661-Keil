@@ -1,17 +1,21 @@
 #ifndef __STM32_USART_H
 #define __STM32_USART_H
 
+#ifdef __cplusplus
+	extern "C"{
+#endif
+		
 #define MAXBUF 255
 
 
 extern u8 Uart1_Buff[MAXBUF];
-extern u16 Uart1_RcvCnt;
+extern volatile u16 Uart1_RcvCnt;
 
 extern u8 Uart2_Buff[MAXBUF];
-extern u16 Uart2_RcvCnt;
+extern volatile u16 Uart2_RcvCnt;
 
 extern u8 Uart3_Buff[MAXBUF];
-extern u16 Uart3_RcvCnt;
+extern volatile u16 Uart3_RcvCnt;
 
 
 
@@ -24,5 +28,9 @@ void Uart2SendStr(u8* str);
 void Uart3Init(u32 bound);
 void Uart3SendHex(u8 ch);
 void Uart3SendStr(u8* str);
+
+#ifdef __cplusplus
+	}
+#endif
 
 #endif

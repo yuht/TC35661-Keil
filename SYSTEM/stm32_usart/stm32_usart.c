@@ -54,13 +54,13 @@ int GetKey (void)  {
 
 
 u8 Uart1_Buff[MAXBUF] = {0};
-u16 Uart1_RcvCnt = 0;
+volatile u16 Uart1_RcvCnt = 0;
 
 u8 Uart2_Buff[MAXBUF] = {0};
-u16 Uart2_RcvCnt = 0;
+volatile u16 Uart2_RcvCnt = 0;
 
 u8 Uart3_Buff[MAXBUF] = {0};
-u16 Uart3_RcvCnt = 0;
+volatile u16 Uart3_RcvCnt = 0;
 
 void Uart1Init(u32 bound){
     //GPIO∂Àø⁄…Ë÷√
