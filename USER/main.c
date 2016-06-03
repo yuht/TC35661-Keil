@@ -13,7 +13,7 @@
 
 int main ( void )
 {
-//	uint8_t static active= 0;
+	uint8_t static active= 0;
 	uint8_t static ledstat;
 	SystemInit();//系统时钟等初始化
 	if(SysTick_Config(72000*1))	 //配置错误返回1,max 16777216   默认72Mhz 时钟 ,1ms延时
@@ -79,7 +79,8 @@ int main ( void )
 			ms_delay_counter = 0;
 			if( ledstat ){
 				LED1_ON;
-				if(C_bt_device_active() ){
+				if(C_bt_device_active() && (active <10) ){
+					active++;
 					C_bt_send("test str");
 				}
 			}else{
@@ -87,9 +88,28 @@ int main ( void )
 			}
 			ledstat = !ledstat;
 		}
+		if((ms_timer %2) == 0){
+			C_bt_step();
+		}
 		
-		C_bt_step();
+		//模块初始化
+		if(C_bt_selftest()){
+			LED2_ON;
+		}else{
+			LED2_OFF;
+		}
 		
+		//模块配对后，通信连接ok
+		if(C_bt_device_active()){
+			LED3_ON;
+			if(Uart1_RcvCnt){
+				delay_ms(100);
+				C_bt_sendBinary((char*)Uart1_Buff,Uart1_RcvCnt);
+				Uart1_RcvCnt = 0;				
+			}
+		}else{
+			LED3_OFF;
+		}
 
 //		LED1_ON;
 //		delay_ms(500);
@@ -100,10 +120,7 @@ int main ( void )
 //			Uart1SendStr(Uart1_Buff);
 //			Uart1_RcvCnt = 0;
 //		}
-//		if(Uart2_RcvCnt){
-//			Uart1SendStr(Uart2_Buff);
-//			Uart2_RcvCnt = 0;
-//		}
+
 //		if(Uart3_RcvCnt){
 //			Uart1SendStr(Uart3_Buff);
 //			Uart3_RcvCnt = 0;
