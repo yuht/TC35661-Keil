@@ -28,6 +28,7 @@
 
 /* Exported types ------------------------------------------------------------*/
 extern volatile u16 ms_delay_counter;
+extern volatile u16 ms_delay;
 extern volatile u32 ms_timer;
 /* Exported constants --------------------------------------------------------*/
 /* Exported macro ------------------------------------------------------------*/

@@ -26,6 +26,7 @@
 //#include "led.h"
 
 volatile u16 ms_delay_counter = 0;
+volatile u16 ms_delay=0;
 volatile u32 ms_timer=0;
 
 void NMI_Handler ( void )
@@ -82,6 +83,7 @@ void SysTick_Handler ( void )
 //	volatile uint8_t static sta;
 	
 	ms_delay_counter++;
+	ms_delay++;
 	ms_timer++;
 //	
 //	sta = !sta;
