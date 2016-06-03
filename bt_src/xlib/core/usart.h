@@ -31,7 +31,7 @@ public:
 	uint8_t Read();
 
 	void Write(uint8_t c);
-
+	void WriteBinary(uint8_t c);
 
 	void SetInterruptPriority(uint8_t p);
 	void ClearRxBuffer();

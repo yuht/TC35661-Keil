@@ -211,6 +211,11 @@ void Usart::SetInterruptPriority(uint8_t p)
 //		this->usart->CTRLA |= this->irq_priority << 0;
 }
 
+void Usart::WriteBinary(uint8_t c)
+{
+	Uart1SendHex(c);
+}
+
 /**
  * Write character to TX buffer
  *
