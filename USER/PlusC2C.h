@@ -23,7 +23,6 @@ void C_bt_module_deinit(void);
 uint8_t C_bt_device_active(void);
 
 void C_bt_send(char * str);
-void C_bt_irgh(uint8_t type, uint8_t * buf);
 
 uint8_t C_bt_selftest(void);
 

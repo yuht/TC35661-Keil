@@ -42,11 +42,6 @@ void C_bt_send(char * str)
 	bt_send(str);
 }
 
-void C_bt_irgh(uint8_t type, uint8_t * buf)
-{
-	bt_irgh(type, buf);
-}
-
 uint8_t C_bt_selftest(void)
 {
 	return bt_selftest();
