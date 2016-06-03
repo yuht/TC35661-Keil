@@ -1,8 +1,10 @@
 
+#include "sys.h"
 #include "common.h"
 #include "usart.h"
 
 
+volatile uint8_t Uart2_pos=0;
 
 Usart::Usart()
 {
@@ -10,6 +12,8 @@ Usart::Usart()
 
 void Usart::InitBuffers(uint8_t rx_size, uint8_t tx_size)
 {
+	Uart2_RcvCnt = 0;
+	Uart2_pos = 0;
 	//init buffers
 //	if ((this->rx_buffer_size = rx_size) && this->rx_buffer == NULL)
 //		this->rx_buffer = new uint8_t[this->rx_buffer_size];
@@ -161,12 +165,14 @@ void Usart::TxComplete()
  */
 bool Usart::isRxBufferEmpty()
 {
-	return (this->rx_len == 0);
+	return !(Uart2_RcvCnt - Uart2_pos);
 }
 
 
 void Usart::ClearRxBuffer()
 {
+	Uart2_RcvCnt = 0;
+	Uart2_pos = 0;
 	//wait to send all data
 //	this->rx_len = 0;
 //	this->rx_index = 0;
@@ -212,6 +218,7 @@ void Usart::SetInterruptPriority(uint8_t p)
  */
 void Usart::Write(uint8_t c)
 {
+	Uart2SendHex(c);
 //	while (this->tx_len == this->tx_buffer_size);
 //
 //	ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
@@ -244,6 +251,13 @@ void Usart::Write(uint8_t c)
 uint8_t Usart::Read()
 {
 	uint8_t c;
+	
+	c = Uart2_Buff[Uart2_pos++];
+	
+	if(Uart2_RcvCnt == Uart2_pos){
+		Uart2_RcvCnt = Uart2_pos = 0;
+	}
+	
 //
 ////	ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
 //	{
@@ -263,7 +277,7 @@ uint8_t Usart::Read()
 //				GpioWrite(this->cts_port, this->cts_pin, this->cts_active);
 //		}
 //	}
-//
+
 	return c;
 
 }
