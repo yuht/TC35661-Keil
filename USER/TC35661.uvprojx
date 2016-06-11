@@ -334,7 +334,7 @@
               <MiscControls></MiscControls>
               <Define>STM32F10X_MD,USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>..\HARDWARE\LED;..\SYSTEM\delay;..\SYSTEM\sys;..\SYSTEM\stm32_usart;..\USER;..\STM32F10x_FWLib\inc;..\CORE;..\HARDWARE\KEY;..\HARDWARE\TIMER;..\HARDWARE\SYSH;..\HARDWARE\5110;..\bt_src;..\bt_src\drivers;..\bt_src\drivers\bluetooth;..\bt_src\drivers\fc;..\bt_src\tasks;..\bt_src\xlib;..\bt_src\xlib\core</IncludePath>
+              <IncludePath>..\HARDWARE\LED;..\SYSTEM\delay;..\SYSTEM\sys;..\SYSTEM\stm32_usart;..\USER;..\STM32F10x_FWLib\inc;..\CORE;..\HARDWARE\KEY;..\HARDWARE\TIMER;..\HARDWARE\SYSH;..\HARDWARE\5110;..\bluetooth</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -482,55 +482,25 @@
               <FileType>1</FileType>
               <FilePath>.\system_stm32f10x.c</FilePath>
             </File>
-            <File>
-              <FileName>PlusC2C.cpp</FileName>
-              <FileType>8</FileType>
-              <FilePath>.\PlusC2C.cpp</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>
-          <GroupName>bt_src</GroupName>
+          <GroupName>Bluetooth</GroupName>
           <Files>
             <File>
-              <FileName>common.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\bt_src\common.h</FilePath>
+              <FileName>bt.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\bluetooth\bt.cpp</FilePath>
             </File>
             <File>
               <FileName>common.cpp</FileName>
               <FileType>8</FileType>
-              <FilePath>..\bt_src\common.cpp</FilePath>
-            </File>
-            <File>
-              <FileName>usart.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\bt_src\xlib\core\usart.h</FilePath>
-            </File>
-            <File>
-              <FileName>usart.cpp</FileName>
-              <FileType>8</FileType>
-              <FilePath>..\bt_src\xlib\core\usart.cpp</FilePath>
-            </File>
-            <File>
-              <FileName>pan1026.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\bt_src\drivers\bluetooth\pan1026.h</FilePath>
+              <FilePath>..\bluetooth\common.cpp</FilePath>
             </File>
             <File>
               <FileName>pan1026.cpp</FileName>
               <FileType>8</FileType>
-              <FilePath>..\bt_src\drivers\bluetooth\pan1026.cpp</FilePath>
-            </File>
-            <File>
-              <FileName>bt.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\bt_src\drivers\bluetooth\bt.h</FilePath>
-            </File>
-            <File>
-              <FileName>bt.cpp</FileName>
-              <FileType>8</FileType>
-              <FilePath>..\bt_src\drivers\bluetooth\bt.cpp</FilePath>
+              <FilePath>..\bluetooth\pan1026.cpp</FilePath>
             </File>
           </Files>
         </Group>

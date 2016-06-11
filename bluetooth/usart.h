@@ -1,7 +1,7 @@
 #ifndef USART_H_
 #define USART_H_
 
-#include "../../common.h"
+#include "common.h"
 
 //#define XLIB_USE_CORE_USART_INIT_VAR uint8_t
 
@@ -30,8 +30,7 @@ public:
 
 	uint8_t Read();
 
-	void Write(uint8_t c);
-	void WriteBinary(uint8_t c);
+	void Write(uint8_t c); 
 
 	void SetInterruptPriority(uint8_t p);
 	void ClearRxBuffer();

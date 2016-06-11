@@ -1,9 +1,18 @@
 #include "bt.h"
 
-#include "../../fc/conf.h"
+//#include "../../fc/conf.h"
 
 //#include "pan1322.h"
 #include "pan1026.h"
+
+//#define DEBUG_BT_ENABLED	//¿ªÆôµ÷ÊÔ
+
+#ifdef DEBUG_BT_ENABLED
+	#define DEBUG_BT(...) DEBUG(__VA_ARGS__)
+#else
+	#define DEBUG_BT(...)
+#endif
+
 
 
 bool bt_autodetect = false;
@@ -63,7 +72,7 @@ void bt_module_reset()
 	bt_uart.Stop();
 	BT_UART_PWR_OFF;
 
-	bt_reset_counter = task_get_ms_tick() + 4000;
+	bt_reset_counter = task_get_ms_tick() + 500;
 	bt_reset_counter_step = 0;
 }
 
@@ -186,7 +195,7 @@ void bt_step()
 //		bt_unknown_parser();
 }
 
-void bt_send(char * str)
+void bt_send(char * str,uint16_t len)
 {
 	if (!bt_device_connected)
 		return;
@@ -195,19 +204,19 @@ void bt_send(char * str)
 //		bt_pan1322.SendString(str);
 
 //	if (bt_module_type == BT_PAN1026)
-		bt_pan1026.SendString(str);
+		bt_pan1026.SendString(str,len);
 }
-void bt_sendBinary(char * str,uint16_t len)
-{
-	if (!bt_device_connected)
-		return;
-	
-//	bt_pan1026.SendBinary(str,len);
-}
+//void bt_sendBinary(char * str,uint16_t len)
+//{
+//	if (!bt_device_connected)
+//		return;
+//	
+////	bt_pan1026.SendBinary(str,len);
+//}
 
 void bt_irqh(uint8_t type, uint8_t * buf)
 {
-	uint8_t old_type;
+//	uint8_t old_type;
 
 	switch(type)
 	{
@@ -244,7 +253,7 @@ void bt_irqh(uint8_t type, uint8_t * buf)
 			DEBUG_BT("BT_IRQ_INIT_FAIL!\r\n");
 			if (bt_autodetect)
 			{
-				old_type = bt_module_type;
+//				old_type = bt_module_type;
 
 				bt_module_deinit();
 				bt_module_type = BT_UNKNOWN;

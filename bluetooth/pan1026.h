@@ -8,9 +8,9 @@
 #ifndef PAN1026_H_
 #define PAN1026_H_
 
-#include "../../common.h"
-#include "../uart.h"
-#include "../../xlib/core/usart.h"
+#include "common.h"
+//#include "../uart.h"
+#include "usart.h"
 
 #define PARSER_BUFFER_SIZE 64
 #define BTLE_SPP_BUFFER_SIZE 85
@@ -67,7 +67,7 @@ public:
 	void StreamWrite(uint8_t data);
 	void RawSendStatic(const uint8_t * data, uint8_t len);
 
-	void SendString(char * str);
+	void SendString(char * str ,uint16_t len);
 
 	uint8_t pan_mac_address[6];
 

@@ -8,9 +8,9 @@
 #ifndef BT_H_
 #define BT_H_
 
-#include "../../common.h"
-#include "../uart.h"
-#include "../../tasks/tasks.h"
+#include "common.h"
+//#include "../uart.h"
+//#include "../../tasks/tasks.h"
 
 #define BT_IRQ_CONNECTED	0
 #define BT_IRQ_DISCONNECTED	1
@@ -35,7 +35,7 @@ void bt_module_init();
 void bt_module_deinit();
 bool bt_device_active();
 
-void bt_send(char * str);
+void bt_send(char * str, uint16_t len);
 void bt_sendBinary(char * str,uint16_t len);
 void bt_irqh(uint8_t type, uint8_t * buf);
 

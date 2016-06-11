@@ -1,4 +1,7 @@
 @echo off
+rd Listing /s /q
+rd Object /s /q
+
 del *.bak /s
 del *.ddk /s
 del *.edk /s
@@ -29,6 +32,4 @@ del *.map /s
 del *.uvguix.* /s  
 del *.dbgconf /s
 
-del Listing /f /q
-del Object /f /q
 exit

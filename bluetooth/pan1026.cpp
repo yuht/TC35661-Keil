@@ -63,11 +63,11 @@ enum pan1026_cmd_e
 	pan_cmd_le_start_advertise						,
 	pan_cmd_le_update_char_element 					,
 	pan_cmd_le_read_val_accept 						,
-	pan_cmd_le_read_multiple_accept 				,
-	pan_cmd_le_write_val_accept 					,
+	pan_cmd_le_read_multiple_accept 				,//25
+	pan_cmd_le_write_val_accept 					, 
 	pan_cmd_le_val_notification 					,
-	pan_cmd_le_read_char_des_accept 				,
-	pan_cmd_le_write_char_des_accept 				,
+	pan_cmd_le_read_char_des_accept 				,//28
+	pan_cmd_le_write_char_des_accept 				,//29 
 	pan_cmd_le_val_indication 						,
 	pan_cmd_le_mtu_req 								,
 	
@@ -84,7 +84,7 @@ enum pan1026_cmd_e
 
 
 	//timeout
-	pan_cmd_release_busy							,
+	pan_cmd_release_busy		,
 };
 
 enum pan1026_parser_e
@@ -277,11 +277,13 @@ void pan1026::ParseHCI()
 						case (0x88): //Read MAC
 							if (this->parser_buffer[11] == 0) //sucess
 							{
-								DEBUG_BT("MAC: ");
 								memcpy(this->pan_mac_address, this->parser_buffer + 14, 6);
+#ifdef DEBUG_BT_ENABLED								
+								DEBUG_BT("MAC: ");
 								for (uint8_t i = 0; i < 6; i++)
 									DEBUG_BT("%02X ", this->pan_mac_address[i]);
 								DEBUG_BT("\r\n");
+#endif								
 								this->SetNextStep(pan_cmd_write_mac);
 							}
 							else
@@ -317,6 +319,7 @@ void pan1026::ParseMNG()
 	{
 
 		case(0x47)://TCU_MNG_CONNECTION_STATUS_EVENT
+#ifdef DEBUG_BT_ENABLED
 			DEBUG_BT("Connection Status: \r\n");
 			DEBUG_BT(" Status          %02X\r\n", status);
 			DEBUG_BT(" MAC             ");
@@ -324,7 +327,7 @@ void pan1026::ParseMNG()
 				DEBUG_BT("%02X ", this->parser_buffer[8 + 5 - i]);
 			DEBUG_BT("\r\n");
 			DEBUG_BT(" Connection status %02X - ", this->parser_buffer[14]);
-
+#endif
 			switch(this->parser_buffer[14])
 			{
 				case(0x00):
@@ -382,12 +385,14 @@ void pan1026::ParseMNG()
 
 
 		case(0x55):
-			DEBUG_BT("Connection request from: \r\n ");
 			memcpy(this->client_mac_address, this->parser_buffer + 7, 6);
+		
+#ifdef DEBUG_BT_ENABLED
+			DEBUG_BT("Connection request from: \r\n ");
 			for (uint8_t i = 6; i > 0; i--)
 				DEBUG_BT("%02X ", this->client_mac_address[i - 1]);
 			DEBUG_BT("\r\n");
-
+#endif
 			this->SetNextStep(pan_cmd_accept_connection);
 
 		break;
@@ -600,7 +605,7 @@ void pan1026::ParseSPP()
 		DEBUG_BT("%02X ", this->parser_buffer[i]);
 	DEBUG_BT("\r\n");
 #endif
-
+	uint16_t datalen;
 	uint8_t op_code, status;
 	op_code = this->parser_buffer[4];
 	status = this->parser_buffer[7];
@@ -619,6 +624,13 @@ void pan1026::ParseSPP()
 				PAN1026_ERROR;
 		break;
 
+		case(0x48): //tcu....
+			datalen = ((uint16_t)this->parser_buffer[8]<<8) |this->parser_buffer[7];
+			if(datalen){
+				BtRecDataToHost(&this->parser_buffer[9],datalen);
+			}
+		break;
+			
 		case(0x43): //TCU_SPP_CONNECT_EVENT
 			if (status == 0)
 			{
@@ -910,7 +922,7 @@ void pan1026::ParseGAT_ser()
 					DEBUG_BT("%c", this->parser_buffer[11 + i]);
 				DEBUG_BT("\r\n");
 			#endif
-
+			BtRecDataToHost(&this->parser_buffer[11], len - 4);
 			//accept request
 			this->SetNextStep(pan_cmd_le_write_val_accept);
 		break;
@@ -1067,6 +1079,9 @@ void pan1026::Parse(uint8_t c)
 {
 //	DEBUG_BT("1026<%02X %c\r\n", c, c);
 
+//#undef  DEBUG_BT
+//#define DEBUG_BT printf
+
 	if (this->usart->rx_ovf)
 	{
 		DEBUG_BT("RX OVF\r\n");
@@ -1174,7 +1189,7 @@ const uint8_t PROGMEM TCU_MNG_SET_SCAN_REQ[] 										= {0x08, 0x00, 0x00, 0xE1
 const uint8_t PROGMEM TCU_MNG_CONNECTION_ACCEPT_REQ[] 								= {0xE1, 0x13};
 const uint8_t PROGMEM TCU_MNG_SSP_SET_REQ_HCI_IO_Capability_Request_Reply[] 		= {0x13, 0x00, 0x00, 0xE1, 0x3D, 0x0C, 0x00, 0x2B, 0x04, 0x09};
 const uint8_t PROGMEM TCU_MNG_SSP_SET_REQ_HCI_User_Confirmation_Request_Reply[] 	= {0x11, 0x00, 0x00, 0xE1, 0x3D, 0x0A, 0x00, 0x2C, 0x04, 0x06};
-const uint8_t PROGMEM TCU_MNG_SSP_SET_REQ_HCI_User_Confirmation_Negative_Reply[] 	= {0x11, 0x00, 0x00, 0xE1, 0x3D, 0x0A, 0x00, 0x2D, 0x04, 0x06};
+//const uint8_t PROGMEM TCU_MNG_SSP_SET_REQ_HCI_User_Confirmation_Negative_Reply[] 	= {0x11, 0x00, 0x00, 0xE1, 0x3D, 0x0A, 0x00, 0x2D, 0x04, 0x06};
 
 
 
@@ -1192,7 +1207,7 @@ const uint8_t PROGMEM tcu_mng_le_start_advertise_direct_address[] = {0x00, 0x00,
 
 /* UUID e079c6a0-aa8b-11e3-a903-0002a5d5c51b */
 const uint8_t PROGMEM spp_over_ble_service_uuid[] 			= {0x1B, 0xC5, 0xD5, 0xA5, 0x02, 0x00, 0x03, 0xA9, 0xE3, 0x11, 0x8B, 0xAA, 0xA0, 0xC6, 0x79, 0xE0};
-const uint8_t PROGMEM spp_over_ble_characteristic_uuid[] 	= {0x1B, 0xC5, 0xD5, 0xA5, 0x02, 0x00, 0xEF, 0x9C, 0xE3, 0x11, 0x89, 0xAA, 0xC0, 0x12, 0x83, 0xB3};
+//const uint8_t PROGMEM spp_over_ble_characteristic_uuid[] 	= {0x1B, 0xC5, 0xD5, 0xA5, 0x02, 0x00, 0xEF, 0x9C, 0xE3, 0x11, 0x89, 0xAA, 0xC0, 0x12, 0x83, 0xB3};
 
 const uint8_t PROGMEM manufacturer_name[] = {'S', 'k', 'y', 'B', 'e', 'a', 'n'};
 const uint8_t PROGMEM TCU_MNG_LE_GEN_RESOLVABLE_BDADDR_REQ[] 	= {0x07, 0x00, 0x00, 0xD1, 0x17, 0x00, 0x00};
@@ -1925,6 +1940,7 @@ void pan1026::Step()
 				this->StreamWrite(0x00); //Success
 				//Error Handle
 				WRITE_16B(0x0000); //Not valid
+				this->busy = false;
 			break;
 
 			case(pan_cmd_le_mtu_req):
@@ -1990,9 +2006,9 @@ bool pan1026::Idle()
 		return true;
 }
 
-void pan1026::SendString(char * str)
+void pan1026::SendString(char * str ,uint16_t len)
 {
-	uint16_t len = strlen(str);
+//	uint16_t len = strlen(str);
 
 	if (!this->Idle())
 		return;

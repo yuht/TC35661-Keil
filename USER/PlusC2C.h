@@ -8,22 +8,16 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-//#include "stm32f10x.h"
-//#include "bt.h"
-	
-void C_bt_init(void);
-void C_bt_stop(void);
+ 
+void C_bt_init(void); 
 void C_bt_step(void);
 
 void C_bt_module_reset(void);
-void C_bt_module_init(void);
-void C_bt_module_deinit(void);
+void C_bt_module_init(void); 
 
 uint8_t C_bt_device_active(void);
 
-void C_bt_send(char * str);
-void C_bt_sendBinary(char * str,uint16_t len);
+void C_bt_send(char * str, uint16_t len); 
 
 uint8_t C_bt_selftest(void);
 
