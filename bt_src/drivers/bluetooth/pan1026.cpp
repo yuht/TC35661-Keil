@@ -5,11 +5,16 @@ extern pan1026 bt_pan1026;
 CreateStdOut(bt_pan1026_out, bt_pan1026.StreamWrite);
 
 /*! The max. ATT size of TC35661 is limited to 64 bytes */
-#define BTLE_SPP_BUFFER_SIZE 60
-
 #define BT_TIMEOUT			1000
-#define BT_NO_TIMEOUT		0
+#define BT_NO_TIMEOUT		0xFFFFFFFF
 
+//#define DEBUG_BT_ENABLED
+
+#ifdef DEBUG_BT_ENABLED
+	#define DEBUG_BT(...) DEBUG(__VA_ARGS__)
+#else
+	#define DEBUG_BT(...)
+#endif
 
 #define SERVICE_GENERIC	0
 #define SERVICE_DEVICE	1
@@ -23,40 +28,63 @@ CreateStdOut(bt_pan1026_out, bt_pan1026.StreamWrite);
 #define CHAR_SPP_SPP				5
 #define CHAR_SPP_SPP_DESC			6
 
+#define BTLE_NOTIFICATION			0x0001
+#define BTLE_INDICATION				0x0002
+
 enum pan1026_cmd_e
 {
 	//init
 	pan_cmd_none 				= 0,
-	pan_cmd_reset 				= 1,
-	pan_cmd_fw 					= 2,
-	pan_cmd_en_i2c 				= 3,
-	pan_cmd_eeprom_write_en 	= 4,
-	pan_cmd_eeprom_read 		= 5,
-	pan_cmd_write_mac 			= 6,
-	pan_cmd_set_mode 			= 7,
-
-	//classic
-	pan_cmd_mng_init 			= 8,
-	pan_cmd_write_cod			= 9,
-	pan_cmd_spp_setup			= 10,
-	pan_cmd_listen				= 11,
-	pan_cmd_accept_connection	= 12,
-	pan_cmd_io_cap_respose		= 13,
-	pan_cmd_confirmation_reply	= 14,
-
+	pan_cmd_reset 				,
+	pan_cmd_fw 					,
+	pan_cmd_en_i2c 				,
+	pan_cmd_eeprom_write_en 	,
+	pan_cmd_eeprom_read 		,
+	pan_cmd_write_mac 			,
+#ifdef BT_DISABLE_UART_RTSCTS
+	pan_cmd_disable_uart_rtscts_control	,
+#endif
+	pan_cmd_set_mode 			,
+	
 	//btle
-	pan_cmd_le_mng_init			= 16,
-	pan_cmd_le_gat_ser_init		= 17,
-	pan_cmd_le_gat_cli_init		= 18,
-	pan_cmd_le_gat_sdb_add_primary_service = 19,
-	pan_cmd_le_gat_sdb_add_characteristic = 20,
-	pan_cmd_le_gat_sdb_add_characteristic_elements = 21,
-	pan_cmd_le_gen_random_address = 22,
-	pan_cmd_le_set_random_address = 23,
-	pan_cmd_le_start_advertise	= 24,
-	pan_cmd_le_update_char = 25,
-	pan_cmd_le_val_accept = 26,
-	pan_cmd_le_multiple_accept = 27,
+	pan_cmd_le_mng_init								,
+	pan_cmd_le_gat_cli_init							,
+	pan_cmd_le_gat_ser_init							,
+	pan_cmd_le_mng_ssp_set_req1						,
+	pan_cmd_le_mng_ssp_set_req2						,
+	pan_cmd_le_mng_ssp_set_req3						,
+	pan_cmd_le_mng_ssp_set_req4						,
+	pan_cmd_le_mng_ssp_set_req5						,
+	pan_cmd_le_gat_sdb_add_primary_service 			,
+	pan_cmd_le_gat_sdb_add_characteristic			,
+	pan_cmd_le_gat_sdb_add_characteristic_elements  ,
+	pan_cmd_le_gen_random_address 					,
+	pan_cmd_le_set_random_address 					,
+	pan_cmd_le_start_advertise						,
+	pan_cmd_le_update_char_element 					,
+	pan_cmd_le_read_val_accept 						,
+	pan_cmd_le_read_multiple_accept 				,
+	pan_cmd_le_write_val_accept 					,
+	pan_cmd_le_val_notification 					,
+	pan_cmd_le_read_char_des_accept 				,
+	pan_cmd_le_write_char_des_accept 				,
+	pan_cmd_le_val_indication 						,
+	pan_cmd_le_mtu_req 								,
+	
+	
+	//classic
+	pan_cmd_mng_init 			,
+	pan_cmd_write_cod			,
+	pan_cmd_spp_setup			,
+	pan_cmd_listen				,
+	pan_cmd_accept_connection	,
+	pan_cmd_io_cap_respose		,
+	pan_cmd_confirmation_reply	,
+	pan_cmd_spp_send			,
+
+
+	//timeout
+	pan_cmd_release_busy							,
 };
 
 enum pan1026_parser_e
@@ -84,19 +112,11 @@ void pan1026::StreamWrite(uint8_t data)
 	this->usart->Write(data);
 }
 
-
-void pan1026::StreamWriteBinary(uint8_t data)
-{
-	this->usart->WriteBinary(data);
-}
-
-
 void pan1026::Init(Usart * uart)
 {
 	this->usart = uart;
-	this->repat_last_cmd = false;
 
-	bt_irgh(BT_IRQ_INIT, 0);
+	bt_irqh(BT_IRQ_INIT, 0);
 
 	strcpy_P(this->label, PSTR("SkyDrop Pan1026"));
 
@@ -105,11 +125,15 @@ void pan1026::Init(Usart * uart)
 
 void pan1026::Restart()
 {
-	this->connected = false;
 	this->parser_buffer_index = 0;
 	this->parser_status = pan_parser_idle;
+	this->btle_connection = false;
+	this->repat_last_cmd = false;
+	this->btle_notifications = BTLE_NOTIFICATION;
+	this->btle_connection = false;
+	this->busy = true;
 
-	bt_irgh(BT_IRQ_RESET, 0);
+	bt_irqh(BT_IRQ_RESET, 0);
 
 	bt_module_reset();
 }
@@ -126,9 +150,8 @@ void pan1026::ParseHCI()
 
 #ifdef DEBUG_BT_ENABLED
 	DEBUG_BT("\r\n - HCI ----\r\n");
-	for (uint8_t i = 0; i < this->parser_packet_length; i++){
+	for (uint8_t i = 0; i < this->parser_packet_length; i++)
 		DEBUG_BT("%02X ", this->parser_buffer[i]);
-	}
 	DEBUG_BT("\r\n");
 #endif
 
@@ -160,7 +183,11 @@ void pan1026::ParseHCI()
 
 				case (0x1013): // Write BD Address response
 					if (status == 0x00)
-						this->SetNextStep(pan_cmd_set_mode);
+#ifdef BT_DISABLE_UART_RTSCTS
+						this->SetNextStep(pan_cmd_disable_uart_rtscts_control);
+#else			
+						this->SetNextStep(pan_cmd_set_mode); 
+#endif
 					else
 						PAN1026_ERROR;
 				break;
@@ -199,13 +226,22 @@ void pan1026::ParseHCI()
 				{
 					if (this->parser_buffer[6] == 0) //sucess
 					{
-						this->SetNextStep(pan_cmd_mng_init);
-						uint8_t tmp = BT_PAN1026;
-						bt_irgh(BT_IRQ_INIT_OK, &tmp);
+						this->SetNextStep(pan_cmd_le_mng_init);
 					}
 					else
 						PAN1026_ERROR;
 				}
+#ifdef BT_DISABLE_UART_RTSCTS
+				else if( cmd == 0x93) // HCI disable uart rtxcts
+				{
+					if (this->parser_buffer[6] == 0) //sucess
+					{
+						this->SetNextStep(pan_cmd_set_mode);
+					}
+					else
+						PAN1026_ERROR;
+				}
+#endif
 				else
 				{
 					uint8_t info = this->parser_buffer[10];
@@ -243,12 +279,9 @@ void pan1026::ParseHCI()
 							{
 								DEBUG_BT("MAC: ");
 								memcpy(this->pan_mac_address, this->parser_buffer + 14, 6);
-						#ifdef DEBUG_BT_ENABLED
-								for (uint8_t i = 0; i < 6; i++){
+								for (uint8_t i = 0; i < 6; i++)
 									DEBUG_BT("%02X ", this->pan_mac_address[i]);
-								}
 								DEBUG_BT("\r\n");
-						#endif
 								this->SetNextStep(pan_cmd_write_mac);
 							}
 							else
@@ -269,9 +302,8 @@ void pan1026::ParseMNG()
 
 #ifdef DEBUG_BT_ENABLED
 	DEBUG_BT("\r\n - MNG ----\r\n");
-	for (uint8_t i = 0; i < this->parser_packet_length; i++){
+	for (uint8_t i = 0; i < this->parser_packet_length; i++)
 		DEBUG_BT("%02X ", this->parser_buffer[i]);
-	}
 	DEBUG_BT("\r\n");
 #endif
 
@@ -288,11 +320,8 @@ void pan1026::ParseMNG()
 			DEBUG_BT("Connection Status: \r\n");
 			DEBUG_BT(" Status          %02X\r\n", status);
 			DEBUG_BT(" MAC             ");
-		#ifdef DEBUG_BT_ENABLED
-			for (uint8_t i = 0; i < 6; i++){
+			for (uint8_t i = 0; i < 6; i++)
 				DEBUG_BT("%02X ", this->parser_buffer[8 + 5 - i]);
-			}
-		#endif
 			DEBUG_BT("\r\n");
 			DEBUG_BT(" Connection status %02X - ", this->parser_buffer[14]);
 
@@ -344,8 +373,7 @@ void pan1026::ParseMNG()
 			if (status == 0x87)
 			{
 				DEBUG_BT(" Link key failure\r\n");
-				for (uint8_t i = 0; i < 16; i++)
-					config.connectivity.bt_link_key[i] = 0;
+				memset((void *)config.connectivity.bt_link_key, 0, sizeof(config.connectivity.bt_link_key));
 
 				eeprom_busy_wait();
 				eeprom_update_block((void *)&config.connectivity.bt_link_key, &config_ee.connectivity.bt_link_key, 16);
@@ -356,12 +384,10 @@ void pan1026::ParseMNG()
 		case(0x55):
 			DEBUG_BT("Connection request from: \r\n ");
 			memcpy(this->client_mac_address, this->parser_buffer + 7, 6);
-		#ifdef DEBUG_BT_ENABLED
-			for (uint8_t i = 6; i > 0; i--){
+			for (uint8_t i = 6; i > 0; i--)
 				DEBUG_BT("%02X ", this->client_mac_address[i - 1]);
-			}
 			DEBUG_BT("\r\n");
-		#endif
+
 			this->SetNextStep(pan_cmd_accept_connection);
 
 		break;
@@ -375,7 +401,7 @@ void pan1026::ParseMNG()
 
 			this->client_name[t_len] = 0;
 			memcpy(this->client_name, this->parser_buffer + 14, t_len);
-			DEBUG_BT("Device name: %s \r\n",this->client_name);
+			DEBUG_BT("Device name: %s\r\n", this->client_name);
 		break;
 
 		case(0x7d):
@@ -413,7 +439,7 @@ void pan1026::ParseMNG()
 
 		case(0x81): // TCU_MNG_INIT_RESPONSE
 			if (status == 0)
-				this->SetNextStep(pan_cmd_write_cod);
+				this->SetNextStep(pan_cmd_le_mng_ssp_set_req3);//pan_cmd_write_cod);
 			else
 				PAN1026_ERROR;
 		break;
@@ -422,55 +448,86 @@ void pan1026::ParseMNG()
 			DEBUG_BT("TCU_MNG_SET_SCAN_RESP\r\n");
 			if (status == 0)
 			{
-				DEBUG_BT("sucess\r\n");
-				//this->SetNextStep(pan_cmd_le_mng_init);
-				
+				DEBUG_BT(" sucess\r\n");
+//				this->SetNextStep(pan_cmd_create_spp);
+				//this->SetNextStep(pan_cmd_mng_init);
+				this->SetNextStep(pan_cmd_le_start_advertise);
 			}
 			else
 				PAN1026_ERROR;
 		break;
 
 		case(0x93): //TCU_MNG_CONNECTION_ACCEPT_RESP
-			DEBUG_BT("Pair status: ");
+			DEBUG_BT("Pair status:\r\n ");
 			switch(status)
 			{
 				case(0x00):
-					DEBUG_BT("Successful");
+					DEBUG_BT("Successful\r\n");
 				break;
 				case(0x01):
-					DEBUG_BT("Parameter Failure");
+					DEBUG_BT("Parameter Failure\r\n");
 				break;
 				case(0x03):
-					DEBUG_BT("No Device Initialization");
+					DEBUG_BT("No Device Initialization\r\n");
 				break;
 				case(0x06):
-					DEBUG_BT("No Connection");
+					DEBUG_BT("No Connection\r\n");
 				break;
 			}
-			DEBUG_BT("\r\n");
 		break;
 
 		case(0xBD): //Encapsulated HCI_RESP
-			hci_status = this->parser_buffer[14];
-			hci_op_code = this->parser_buffer[12] | (this->parser_buffer[13] << 8);
-
-			DEBUG_BT("HCI status %02X\r\n", hci_status);
-			DEBUG_BT("HCI op_code %04X\r\n", hci_op_code);
-
-			switch (hci_op_code)
+			if(this->parser_buffer[0]==0x09)
 			{
-				case(0x0c24): //Write Class of Device Command response
-					if (status == 0 && hci_status == 0)
-						this->SetNextStep(pan_cmd_spp_setup);
-					else
-						PAN1026_ERROR
-				break;
+				switch(this->last_cmd){
+					case(pan_cmd_le_mng_ssp_set_req1):
+						DEBUG_BT("pan_cmd_le_mng_ssp_set_req1 ok\r\n");
+						this->SetNextStep(pan_cmd_le_mng_ssp_set_req2);
+					break;
+					case(pan_cmd_le_mng_ssp_set_req2):
+						DEBUG_BT("pan_cmd_le_mng_ssp_set_req2 ok\r\n");
+						this->SetNextStep(pan_cmd_le_gat_sdb_add_primary_service);
+					break;
+					default:
+						break;
+					
+				} 
+			}
+			else if(this->parser_buffer[0] > 14)
+			{
+				
+				hci_status = this->parser_buffer[14];
+				hci_op_code = this->parser_buffer[12] | (this->parser_buffer[13] << 8);
 
-				case(0x042b):// TCU_MNG_SSP_SET_RESP_HCI_IO_Capability_Request_Reply
-				break;
+				DEBUG_BT("HCI status %02X\r\n", hci_status);
+				DEBUG_BT("HCI op_code %04X\r\n", hci_op_code);
 
-				case(0x042c):// TCU_MNG_SSP_SET_RESP_HCI_User_Confirmation_Request_Reply
-				break;
+				switch (hci_op_code)
+				{
+					case(0x0c24): //Write Class of Device Command response
+						if (status == 0 && hci_status == 0)
+							this->SetNextStep(pan_cmd_spp_setup);
+						else
+							PAN1026_ERROR
+					break;
+				
+					case(0x042b):// TCU_MNG_SSP_SET_RESP_HCI_IO_Capability_Request_Reply
+					break;
+
+					case(0x042c):// TCU_MNG_SSP_SET_RESP_HCI_User_Confirmation_Request_Reply
+					break;
+					
+					
+					case(0x0C1C):
+						DEBUG_BT("pan_cmd_le_mng_ssp_set_req4 ok\r\n");
+						this->SetNextStep(pan_cmd_le_mng_ssp_set_req5);
+					break; 
+					
+					case(0x0C1E):
+						DEBUG_BT("pan_cmd_le_mng_ssp_set_req5 ok\r\n");
+						this->SetNextStep(pan_cmd_listen);
+					break;
+				}
 			}
 		break;
 
@@ -539,78 +596,63 @@ void pan1026::ParseSPP()
 
 #ifdef DEBUG_BT_ENABLED
 	DEBUG_BT("\r\n - SPP ----\r\n");
-	for (uint8_t i = 0; i < this->parser_packet_length; i++){
+	for (uint8_t i = 0; i < this->parser_packet_length; i++)
 		DEBUG_BT("%02X ", this->parser_buffer[i]);
-	}
 	DEBUG_BT("\r\n");
 #endif
 
 	uint8_t op_code, status;
-	
 	op_code = this->parser_buffer[4];
 	status = this->parser_buffer[7];
-#ifdef DEBUG_BT_ENABLED
+
 	DEBUG_BT("op_code: %02X\r\n", op_code);
-	if(op_code != 0x48){
-		DEBUG_BT("status: %02X\r\n", status);
-	}
-#endif
+	DEBUG_BT("status: %02X\r\n", status);
+
 	switch(op_code)
 	{
 		case(0x81): //TCU_SPP_SETUP_RESP
-			if (status == 0)
-				this->SetNextStep(pan_cmd_listen);
+			if (status == 0){
+				DEBUG_BT("pan_cmd_spp_setup ok\r\n");
+				this->SetNextStep(pan_cmd_le_mng_ssp_set_req4);
+			}
 			else
 				PAN1026_ERROR;
 		break;
 
 		case(0x43): //TCU_SPP_CONNECT_EVENT
 			if (status == 0)
-				bt_irgh(BT_IRQ_CONNECTED, 0);
+			{
+				bt_irqh(BT_IRQ_CONNECTED, 0);
+				this->SetNextStep(pan_cmd_release_busy);
+			}
 			else
 				PAN1026_ERROR;
 		break;
 
 		case(0x44): //TCU_SPP_DISCONNECT_EVENT
 			if (status == 0)
-				bt_irgh(BT_IRQ_DISCONNECTED, 0);
+				bt_irqh(BT_IRQ_DISCONNECTED, 0);
 			else
 				PAN1026_ERROR;
 		break;
 
-		case(0x48): //
-			{
-				uint16_t spplength = ((uint16_t)parser_buffer[6]<<8) | parser_buffer[5];
-				if(spplength){
-					uint16_t datalength = ((uint16_t)parser_buffer[8]<<8) | parser_buffer[7];
-				#ifdef DEBUG_BT
-					DEBUG_BT("\r\nspp  length: %4d" ,spplength);
-					DEBUG_BT("\r\ndata length: %4d" ,datalength);
-					DEBUG_BT("\r\ndata on usart3:");
-					this->RawSendStatic(&parser_buffer[9],datalength);
-					DEBUG_BT("\r\n");
-				#endif
-					this->RawSendStaticBinary(&parser_buffer[9],datalength);
-					
-				}
-			}
-			
 		case(0xF1): // TCU_SPP_DATA_SEND_EVENT
 			DEBUG_BT("data send!\r\n");
+
+			this->busy = false;
 		break;
 	}
 }
 
 void pan1026::ParseMNG_LE()
 {
-	uint8_t status, op_code;
+	uint8_t status, op_code, tmp;
 	uint16_t handle;
 
 #ifdef DEBUG_BT_ENABLED
 	DEBUG_BT("\r\n - MNG LE ----\r\n");
-	for (uint8_t i = 0; i < this->parser_packet_length; i++){
+	for (uint8_t i = 0; i < this->parser_packet_length; i++)
 		DEBUG_BT("%02X ", this->parser_buffer[i]);
-	}
 	DEBUG_BT("\r\n");
 #endif
 
@@ -633,8 +675,10 @@ void pan1026::ParseMNG_LE()
 					break;
 				}
 
-				this->btle_connection_handles[0] = this->parser_buffer[8] | (this->parser_buffer[9] << 8);
-				DEBUG_BT("Handle 0x%04X\r\n", this->btle_connection_handles[0]);
+				this->btle_connection_handle = this->parser_buffer[8] | (this->parser_buffer[9] << 8);
+				DEBUG_BT("Handle 0x%04X\r\n", this->btle_connection_handle);
+
+				this->SetNextStep(pan_cmd_le_mtu_req);
 			}
 			else
 				PAN1026_ERROR;
@@ -644,6 +688,8 @@ void pan1026::ParseMNG_LE()
 			DEBUG_BT("LE Disconnection event\r\n");
 			handle = this->parser_buffer[7] | (this->parser_buffer[8] << 8);
 			DEBUG_BT("Handle 0x%04X\r\n", handle);
+			bt_irqh(BT_IRQ_DISCONNECTED, NULL);
+			this->btle_connection = false;
 
 			this->SetNextStep(pan_cmd_le_start_advertise);
 		break;
@@ -652,7 +698,7 @@ void pan1026::ParseMNG_LE()
 			if (status == 0)
 			{
 				DEBUG_BT("MNG LE init success\r\n");
-				this->SetNextStep(pan_cmd_le_gat_ser_init);
+				this->SetNextStep(pan_cmd_le_gat_cli_init);
 			}
 			else
 				PAN1026_ERROR;
@@ -664,6 +710,8 @@ void pan1026::ParseMNG_LE()
 			{
 				case(0x00):
 					DEBUG_BT("success\r\n");
+					tmp = BT_PAN1026;
+					bt_irqh(BT_IRQ_INIT_OK, &tmp);
 				break;
 				case(0x86):
 					DEBUG_BT("Parameter error\r\n");
@@ -697,11 +745,35 @@ void pan1026::ParseMNG_LE()
 			if (status == 0x00)
 			{
 				DEBUG_BT(" sucess\r\n");
-				memcpy(this->random_address, &this->parser_buffer[8], 6);
+
 				this->SetNextStep(pan_cmd_le_set_random_address);
+
+				bool store_mac = true;
+
+				for (uint8_t i = 0; i < 6; i++)
+					if (config.connectivity.btle_mac[i] != 0)
+					{
+						store_mac = false;
+						break;
+					}
+
+
+				if (!store_mac)
+					break;
+
+				DEBUG_BT("Storing new random address...\r\n");
+				memcpy((void *)config.connectivity.btle_mac, &this->parser_buffer[8], 6);
+				eeprom_busy_wait();
+				eeprom_update_block((void *)&config.connectivity.btle_mac, &config_ee.connectivity.btle_mac, 6);
 			}
 			else
 				PAN1026_ERROR;
+		break;
+
+		case(0xF1): //TCU_LE_ACCEPT
+			DEBUG_BT("TCU_LE_ACCEPT\r\n");
+			DEBUG_BT(" ServiceID_Received %02X\r\n", this->parser_buffer[8]);
+			DEBUG_BT(" Command_OpCode_Received %02X\r\n", this->parser_buffer[9]);
 		break;
 
 		case(0xFF): //TCU_LE_SYS_INVALID_COMMAND
@@ -715,13 +787,12 @@ void pan1026::ParseMNG_LE()
 void pan1026::ParseGAT_ser()
 {
 	uint8_t status, op_code;
-	uint16_t handle;
+	uint16_t handle, len;
 
 #ifdef DEBUG_BT_ENABLED
 	DEBUG_BT("\r\n - GAT ser ----\r\n");
-	for (uint8_t i = 0; i < this->parser_packet_length; i++){
+	for (uint8_t i = 0; i < this->parser_packet_length; i++)
 		DEBUG_BT("%02X ", this->parser_buffer[i]);
-	}
 	DEBUG_BT("\r\n");
 #endif
 
@@ -737,7 +808,8 @@ void pan1026::ParseGAT_ser()
 			if (status == 0)
 			{
 				DEBUG_BT("GAT ser init success\r\n");
-				this->SetNextStep(pan_cmd_le_gat_cli_init);
+				this->SetNextStep(pan_cmd_le_mng_ssp_set_req1);
+				//this->SetNextStep(pan_cmd_le_gen_random_address);//pan_cmd_le_gat_cli_init);
 			}
 			else
 				PAN1026_ERROR;
@@ -790,8 +862,8 @@ void pan1026::ParseGAT_ser()
 			if (status == 0)
 			{
 				DEBUG_BT("GAT add characteristic element success\r\n");
-				this->btle_element_handles[this->cmd_iter] = this->parser_buffer[8] | (this->parser_buffer[9] << 8);
-				DEBUG_BT("Handle 0x%04X\r\n", this->btle_element_handles[this->cmd_iter]);
+				this->btle_characteristic_element_handles[this->cmd_iter] = this->parser_buffer[8] | (this->parser_buffer[9] << 8);
+				DEBUG_BT("Handle 0x%04X\r\n", this->btle_characteristic_element_handles[this->cmd_iter]);
 
 				this->cmd_iter++;
 				if (this->cmd_iter < 7) //7
@@ -801,7 +873,8 @@ void pan1026::ParseGAT_ser()
 				else
 				{
 					this->cmd_iter = 0;
-					this->SetNextStep(pan_cmd_le_start_advertise);
+					//this->SetNextStep(pan_cmd_le_start_advertise);
+					this->SetNextStep(pan_cmd_mng_init);
 				}
 			}
 			else
@@ -818,7 +891,28 @@ void pan1026::ParseGAT_ser()
 			//update characteristic
 
 			//accept request
-			this->SetNextStep(pan_cmd_le_val_accept);
+			this->SetNextStep(pan_cmd_le_read_val_accept);
+		break;
+
+		case(0xC3): //TCU_LE_GATT_SER_WRITE_CHAR_VAL_EVENT
+			DEBUG_BT("TCU_LE_GATT_SER_WRITE_CHAR_VAL_EVENT\r\n");
+			len = this->parser_buffer[5] | (this->parser_buffer[6] << 8);
+			DEBUG_BT(" param len %d\r\n", len);
+			handle = this->parser_buffer[7] | (this->parser_buffer[8] << 8);
+			DEBUG_BT(" conn handle %04X\r\n", handle);
+			handle = this->parser_buffer[9] | (this->parser_buffer[10] << 8);
+			DEBUG_BT(" char handle %04X\r\n", handle);
+
+			//data! (droping...)
+			#ifdef DEBUG_BT_ENABLED
+				DEBUG_BT(" data: ");
+				for (uint16_t i = 0; i < len - 4; i++)
+					DEBUG_BT("%c", this->parser_buffer[11 + i]);
+				DEBUG_BT("\r\n");
+			#endif
+
+			//accept request
+			this->SetNextStep(pan_cmd_le_write_val_accept);
 		break;
 
 		case(0xCA): //TCU_LE_GATT_SER_READ_MULTIPLE_EVENT
@@ -827,9 +921,8 @@ void pan1026::ParseGAT_ser()
 			DEBUG_BT(" conn handle %04X\r\n", handle);
 
 			//accept request
-			this->SetNextStep(pan_cmd_le_multiple_accept);
+			this->SetNextStep(pan_cmd_le_read_multiple_accept);
 		break;
-
 		case(0x82): //TCU_LE_GATT_SER_READ_CHAR_VAL_ACCEPT_RESP
 			DEBUG_BT("TCU_LE_GATT_SER_READ_CHAR_VAL_ACCEPT_RESP\r\n");
 			handle = this->parser_buffer[7] | (this->parser_buffer[8] << 8);
@@ -843,18 +936,96 @@ void pan1026::ParseGAT_ser()
 			DEBUG_BT(" handle %04X\r\n", handle);
 			DEBUG_BT(" status %02X\r\n", this->parser_buffer[9]);
 		break;
+
+		case(0xC8)://TCU_LE_GATT_SER_READ_CHAR_DESP_EVENT
+			DEBUG_BT("TCU_LE_GATT_SER_READ_CHAR_DESP_EVENT\r\n");
+
+			handle = this->parser_buffer[7] | (this->parser_buffer[8] << 8);
+			DEBUG_BT(" conn handle %04X\r\n", handle);
+			handle = this->parser_buffer[9] | (this->parser_buffer[10] << 8);
+			DEBUG_BT(" char desc handle %04X\r\n", handle);
+
+			//accept request
+			this->SetNextStep(pan_cmd_le_read_char_des_accept);
+		break;
+
+		case(0x83)://TCU_LE_GATT_SER_WRITE_CHAR_VAL_ACCEPT_RESP
+			DEBUG_BT("TCU_LE_GATT_SER_WRITE_CHAR_VAL_ACCEPT_RESP\r\n");
+
+			handle = this->parser_buffer[7] | (this->parser_buffer[8] << 8);
+			DEBUG_BT(" conn handle %04X\r\n", handle);
+			DEBUG_BT(" status %02X\r\n", this->parser_buffer[9]);
+		break;
+
+		case(0x88)://TCU_LE_GATT_SER_READ_CHAR_DESP_ACCEPT_RESP
+			DEBUG_BT("TCU_LE_GATT_SER_READ_CHAR_DESP_ACCEPT_RESP\r\n");
+
+			handle = this->parser_buffer[7] | (this->parser_buffer[8] << 8);
+			DEBUG_BT(" conn handle %04X\r\n", handle);
+			DEBUG_BT(" status %02X\r\n", this->parser_buffer[9]);
+		break;
+
+		case(0x45)://TCU_LE_GATT_SER_CHAR_VAL_NOTIFICATION_EVENT
+			DEBUG_BT("TCU_LE_GATT_SER_CHAR_VAL_NOTIFICATION_EVENT\r\n");
+
+			handle = this->parser_buffer[7] | (this->parser_buffer[8] << 8);
+			DEBUG_BT(" conn handle %04X\r\n", handle);
+
+			this->busy = false;
+		break;
+
+		case(0x46)://TCU_LE_GATT_SER_CHAR_VAL_INDICATION_EVENT
+			DEBUG_BT("TCU_LE_GATT_SER_CHAR_VAL_INDICATION_EVENT\r\n");
+
+			handle = this->parser_buffer[7] | (this->parser_buffer[8] << 8);
+			DEBUG_BT(" conn handle %04X\r\n", handle);
+			DEBUG_BT(" status %02X\r\n", this->parser_buffer[9]);
+
+			this->busy = false;
+		break;
+
+		case(0xA5)://TCU_LE_GATT_SDB_UPD_CHAR_ELE_RESP
+			DEBUG_BT("TCU_LE_GATT_SDB_UPD_CHAR_ELE_RESP\r\n");
+
+			//accept request
+			this->SetNextStep(pan_cmd_le_write_char_des_accept);
+		break;
+
+		case(0xC4): //TCU_LE_GATT_SER_WRITE_CHAR_DESP_EVENT
+			DEBUG_BT("TCU_LE_GATT_SER_WRITE_CHAR_DESP_EVENT\r\n");
+			len = this->parser_buffer[5] | (this->parser_buffer[6] << 8);
+			DEBUG_BT(" param len %d\r\n", len);
+			handle = this->parser_buffer[7] | (this->parser_buffer[8] << 8);
+			DEBUG_BT(" conn handle %04X\r\n", handle);
+			handle = this->parser_buffer[9] | (this->parser_buffer[10] << 8);
+			DEBUG_BT(" char handle %04X\r\n", handle);
+
+			//data!
+			#ifdef DEBUG_BT_ENABLED
+				DEBUG_BT(" data: ");
+				for (uint16_t i = 0; i < len - 4; i++)
+					DEBUG_BT("%c", this->parser_buffer[11 + i]);
+				DEBUG_BT("\r\n");
+			#endif
+
+			if (handle == this->btle_characteristic_element_handles[CHAR_SPP_SPP_DESC])
+				this->btle_notifications = this->parser_buffer[11] | (this->parser_buffer[12] << 8);
+
+			//update
+			this->SetNextStep(pan_cmd_le_update_char_element);
+		break;
 	}
 }
 
 void pan1026::ParseGAT_cli()
 {
 	uint8_t status, op_code;
+	uint16_t handle;
 
 #ifdef DEBUG_BT_ENABLED
 	DEBUG_BT("\r\n - GAT cli ----\r\n");
-	for (uint8_t i = 0; i < this->parser_packet_length; i++){
+	for (uint8_t i = 0; i < this->parser_packet_length; i++)
 		DEBUG_BT("%02X ", this->parser_buffer[i]);
-	}
 	DEBUG_BT("\r\n");
 #endif
 
@@ -871,10 +1042,23 @@ void pan1026::ParseGAT_cli()
 			{
 				DEBUG_BT("GAT cli init success\r\n");
 				this->cmd_iter = 0;
-				this->SetNextStep(pan_cmd_le_gen_random_address);
+				this->SetNextStep(pan_cmd_le_gat_ser_init);// //pan_cmd_le_gen_random_address);
 			}
 			else
 				PAN1026_ERROR;
+		break;
+
+		case(0x41): //TCU_LE_GATT_CLI_EXG_MTU_EVENT
+			DEBUG_BT("TCU_LE_GATT_CLI_EXG_MTU_EVENT\r\n");
+			handle = this->parser_buffer[7] | (this->parser_buffer[8] << 8);
+			DEBUG_BT(" conn handle %04X\r\n", handle);
+			DEBUG_BT(" status %02X\r\n", this->parser_buffer[9]);
+			handle = this->parser_buffer[10] | (this->parser_buffer[11] << 8);
+			DEBUG_BT(" MTU size %u\r\n", handle);
+
+			bt_irqh(BT_IRQ_CONNECTED, NULL);
+			this->btle_connection = true;
+			this->SetNextStep(pan_cmd_release_busy);
 		break;
 	}
 }
@@ -913,7 +1097,7 @@ void pan1026::Parse(uint8_t c)
 					uint32_t tmp_len = this->parser_buffer[0] | (this->parser_buffer[1] << 8) | ((uint32_t)this->parser_buffer[2] << 16);
 					if (tmp_len > 0xFFFF)
 					{
-						DEBUG_BT("WARNING len = %lu\r\n", tmp_len);
+						DEBUG_BT("WARNING len = %lu\r\n", (unsigned long)tmp_len);
 
 						DEBUG_BT(" %02X %02X %02X\r\n", this->parser_buffer[0], this->parser_buffer[1], this->parser_buffer[2]);
 
@@ -974,40 +1158,45 @@ void pan1026::Parse(uint8_t c)
 	}
 }
 
-const uint8_t PROGMEM TCU_HCI_RESET_REQ[] = {0x01, 0x03, 0x0c, 0x00};
-const uint8_t PROGMEM TCU_HCI_GET_FIRMWARE_VERSION_REQ[] = {0x01, 0x08, 0xfc, 0x09, 0x00, 0xa1, 0x00, 0x00, 0x00, 0x14, 0x0d, 0xff, 0x00};
-const uint8_t PROGMEM TCU_HCI_M2_BTL_SET_I2C_ENABLE_REQ[] = {0x01, 0x08, 0xfc, 0x0b, 0x00, 0xa0, 0x00, 0x00, 0x00, 0x14, 0x5b, 0xff, 0x02, 0x03, 0x01};
-const uint8_t PROGMEM TCU_HCI_M2_BTL_EEPROM_WRITE_ENABLE_REQ[] = {0x01, 0x08, 0xfc, 0x09, 0x00, 0xa0, 0x00, 0x00, 0x00, 0x14, 0x83, 0xff, 0x00};
-const uint8_t PROGMEM TCU_HCI_M2_GENERAL_READ_EEPROM_REQ[] = {0x01, 0x08, 0xfc, 0x10, 0x00, 0xa1, 0x00, 0x00, 0x00, 0x14, 0x88, 0xff, 0x10, 0x06, 0xa0, 0x01, 0x01, 0x06, 0x02, 0x00};
-const uint8_t PROGMEM TCU_HCI_WRITE_BD_ADDR_REQ[] = {0x01, 0x13, 0x10, 0x06};
-const uint8_t PROGMEM TCU_HCI_SET_MODE_REQ[] = {0x01, 0x08, 0xfc, 0x03, 0x00, 0x99, 0x01};
+const uint8_t PROGMEM TCU_HCI_RESET_REQ[] 					= {0x01, 0x03, 0x0C, 0x00};
+const uint8_t PROGMEM TCU_HCI_GET_FIRMWARE_VERSION_REQ[] 	= {0x01, 0x08, 0xFC, 0x09, 0x00, 0xA1, 0x00, 0x00, 0x00, 0x14, 0x0D, 0xFF, 0x00};
+const uint8_t PROGMEM TCU_HCI_M2_BTL_SET_I2C_ENABLE_REQ[] 	= {0x01, 0x08, 0xFC, 0x0B, 0x00, 0xA0, 0x00, 0x00, 0x00, 0x14, 0x5B, 0xFF, 0x02, 0x03, 0x01};
+const uint8_t PROGMEM TCU_HCI_M2_BTL_EEPROM_WRITE_ENABLE_REQ[] 	= {0x01, 0x08, 0xFC, 0x09, 0x00, 0xA0, 0x00, 0x00, 0x00, 0x14, 0x83, 0xFF, 0x00};
+const uint8_t PROGMEM TCU_HCI_M2_GENERAL_READ_EEPROM_REQ[] 		= {0x01, 0x08, 0xFC, 0x10, 0x00, 0xA1, 0x00, 0x00, 0x00, 0x14, 0x88, 0xFF, 0x10, 0x06, 0xA0, 0x01, 0x01, 0x06, 0x02, 0x00};
+const uint8_t PROGMEM TCU_HCI_WRITE_BD_ADDR_REQ[] 				= {0x01, 0x13, 0x10, 0x06};
+const uint8_t PROGMEM TCU_HCI_DISABLE_UART_RTSCTS_CONTROL[]		= {0x01, 0x08, 0xFC, 0x03, 0x00, 0x93, 0x00}; 
+const uint8_t PROGMEM TCU_HCI_SET_MODE_REQ[] 					= {0x01, 0x08, 0xFC, 0x03, 0x00, 0x99, 0x01};
 
 const uint8_t PROGMEM TCU_MNG_INIT_REQ[] = {0xe1, 0x01};
-const uint8_t PROGMEM TCU_MNG_STANDARD_HCI_SET_REQ_Write_Class_of_Device[] = {0x0d, 0x00, 0x00, 0xe1, 0x3d, 0x06, 0x00, 0x24, 0x0c, 0x03, 0x10, 0x05, 0x01};
-const uint8_t PROGMEM TCU_SPP_SETUP_REQ[] = {0x07, 0x00, 0x00, 0xe5, 0x01, 0x00, 0x00};
-const uint8_t PROGMEM TCU_MNG_SET_SCAN_REQ[] = {0x08, 0x00, 0x00, 0xe1, 0x0c, 0x01, 0x00, 0x03};
-const uint8_t PROGMEM TCU_MNG_CONNECTION_ACCEPT_REQ[] = {0xe1, 0x13};
-const uint8_t PROGMEM TCU_MNG_SSP_SET_REQ_HCI_IO_Capability_Request_Reply[] = {0x13, 0x00, 0x00, 0xe1, 0x3d, 0x0c, 0x00, 0x2b, 0x04, 0x09};
-const uint8_t PROGMEM TCU_MNG_SSP_SET_REQ_HCI_User_Confirmation_Request_Reply[] = {0x11, 0x00, 0x00, 0xe1, 0x3d, 0x0a, 0x00, 0x2c, 0x04, 0x06};
-//const uint8_t PROGMEM TCU_MNG_SSP_SET_REQ_HCI_User_Confirmation_Negative_Reply[] = {0x11, 0x00, 0x00, 0xe1, 0x3d, 0x0a, 0x00, 0x2d, 0x04, 0x06};
+const uint8_t PROGMEM TCU_MNG_STANDARD_HCI_SET_REQ_Write_Class_of_Device[] 			= {0x0D, 0x00, 0x00, 0xE1, 0x3D, 0x06, 0x00, 0x24, 0x0C, 0x03, 0x10, 0x05, 0x01};
+const uint8_t PROGMEM TCU_SPP_SETUP_REQ[] 											= {0x07, 0x00, 0x00, 0xE5, 0x01, 0x00, 0x00};
+const uint8_t PROGMEM TCU_MNG_SET_SCAN_REQ[] 										= {0x08, 0x00, 0x00, 0xE1, 0x0C, 0x01, 0x00, 0x03};
+const uint8_t PROGMEM TCU_MNG_CONNECTION_ACCEPT_REQ[] 								= {0xE1, 0x13};
+const uint8_t PROGMEM TCU_MNG_SSP_SET_REQ_HCI_IO_Capability_Request_Reply[] 		= {0x13, 0x00, 0x00, 0xE1, 0x3D, 0x0C, 0x00, 0x2B, 0x04, 0x09};
+const uint8_t PROGMEM TCU_MNG_SSP_SET_REQ_HCI_User_Confirmation_Request_Reply[] 	= {0x11, 0x00, 0x00, 0xE1, 0x3D, 0x0A, 0x00, 0x2C, 0x04, 0x06};
+const uint8_t PROGMEM TCU_MNG_SSP_SET_REQ_HCI_User_Confirmation_Negative_Reply[] 	= {0x11, 0x00, 0x00, 0xE1, 0x3D, 0x0A, 0x00, 0x2D, 0x04, 0x06};
 
-const uint8_t PROGMEM TCU_MNG_LE_INIT_REQ[] = {0xd1, 0x01};
-const uint8_t PROGMEM TCU_LE_GATT_SER_INIT_REQ[] = {0x07, 0x00, 0x00, 0xd3, 0x00, 0x00, 0x00};
-const uint8_t PROGMEM TCU_LE_GATT_CLI_INIT_REQ[] = {0x07, 0x00, 0x00, 0xd2, 0x00, 0x00, 0x00};
 
+
+const uint8_t PROGMEM TCU_MNG_LE_INIT_REQ[] 		= {0xD1, 0x01};
+const uint8_t PROGMEM TCU_LE_GATT_SER_INIT_REQ[] 	= {0x07, 0x00, 0x00, 0xD3, 0x00, 0x00, 0x00};
+const uint8_t PROGMEM TCU_LE_GATT_CLI_INIT_REQ[] 	= {0x07, 0x00, 0x00, 0xD2, 0x00, 0x00, 0x00};
+const uint8_t PROGMEM TCU_LE_NMG_SSP_SET_REQ1[] 	= {0x12, 0x00, 0x00, 0xE1, 0x3D, 0x0B, 0x00, 0x03, 0xFC, 0x08, 0x00, 0xD1, 0x66, 0x98, 0x04, 0x00, 0x00, 0x00};
+const uint8_t PROGMEM TCU_LE_NMG_SSP_SET_REQ2[] 	= {0x12, 0x00, 0x00, 0xE1, 0x3D, 0x0B, 0x00, 0x03, 0xFC, 0x08, 0x00, 0xD1, 0x54, 0x98, 0x04, 0x00, 0x00, 0x00};
+const uint8_t PROGMEM TCU_LE_NMG_SSP_SET_REQ3[] 	= {0x0D, 0x00, 0x00, 0xE1, 0x3D, 0x06, 0x00, 0x24, 0x0C, 0x03, 0x04, 0x04, 0x24};
+const uint8_t PROGMEM TCU_LE_NMG_SSP_SET_REQ4[] 	= {0x0E, 0x00, 0x00, 0xE1, 0x3D, 0x07, 0x00, 0x1C, 0x0C, 0x04, 0x00, 0x04, 0x12, 0x00};
+const uint8_t PROGMEM TCU_LE_NMG_SSP_SET_REQ5[] 	= {0x0E, 0x00, 0x00, 0xE1, 0x3D, 0x07, 0x00, 0x1E, 0x0C, 0x04, 0x00, 0x02, 0x12, 0x00};
+
+	
 const uint8_t PROGMEM tcu_mng_le_start_advertise_direct_address[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 /* UUID e079c6a0-aa8b-11e3-a903-0002a5d5c51b */
-const uint8_t PROGMEM spp_over_ble_service_uuid[] = {0x1b, 0xc5, 0xd5, 0xa5, 0x02, 0x00, 0x03, 0xa9, 0xe3, 0x11, 0x8b, 0xaa, 0xa0, 0xc6, 0x79, 0xe0};
-const uint8_t PROGMEM spp_over_ble_characteristic_uuid[] = {0x1b, 0xc5, 0xd5, 0xa5, 0x02, 0x00, 0xef, 0x9c, 0xe3, 0x11, 0x89, 0xaa, 0xc0, 0x12, 0x83, 0xb3};
-
-/* UUID f6ec37db-bda1-46ec-a43a-6d86de88561d */
-//const uint8_t PROGMEM spp_over_ble_service_uuid[] = {0x1d, 0x56, 0x88, 0xde, 0x86, 0x6d, 0x3a, 0xa4, 0xec, 0x46, 0xa1, 0xbd, 0xdb, 0x37, 0xec, 0xf6};
-//const uint8_t PROGMEM spp_over_ble_characteristic_uuid[] = {0xb3, 0x31, 0x07, 0x54, 0x42, 0xaf, 0xf7, 0x9a, 0x98, 0x49, 0x18, 0x25, 0xac, 0xfb, 0x20, 0xaf};
+const uint8_t PROGMEM spp_over_ble_service_uuid[] 			= {0x1B, 0xC5, 0xD5, 0xA5, 0x02, 0x00, 0x03, 0xA9, 0xE3, 0x11, 0x8B, 0xAA, 0xA0, 0xC6, 0x79, 0xE0};
+const uint8_t PROGMEM spp_over_ble_characteristic_uuid[] 	= {0x1B, 0xC5, 0xD5, 0xA5, 0x02, 0x00, 0xEF, 0x9C, 0xE3, 0x11, 0x89, 0xAA, 0xC0, 0x12, 0x83, 0xB3};
 
 const uint8_t PROGMEM manufacturer_name[] = {'S', 'k', 'y', 'B', 'e', 'a', 'n'};
-const uint8_t PROGMEM TCU_MNG_LE_GEN_RESOLVABLE_BDADDR_REQ[] = {0x07, 0x00, 0x00, 0xD1, 0x17, 0x00, 0x00};
-const uint8_t PROGMEM TCU_MNG_LE_SET_RAND_ADDRESS_REQ[] = {0x0D, 0x00, 0x00, 0xD1, 0x04, 0x06, 0x00};
+const uint8_t PROGMEM TCU_MNG_LE_GEN_RESOLVABLE_BDADDR_REQ[] 	= {0x07, 0x00, 0x00, 0xD1, 0x17, 0x00, 0x00};
+const uint8_t PROGMEM TCU_MNG_LE_SET_RAND_ADDRESS_REQ[] 		= {0x0D, 0x00, 0x00, 0xD1, 0x04, 0x06, 0x00};
 
 #define RAW(data) \
 	this->RawSendStatic(data, sizeof(data))
@@ -1028,12 +1217,6 @@ void pan1026::RawSendStatic(const uint8_t * data, uint8_t len)
 {
 	for(uint8_t i = 0; i < len; i++)
 		this->StreamWrite(pgm_read_byte(&data[i]));
-}
-
-void pan1026::RawSendStaticBinary(const uint8_t * data, uint8_t len)
-{
-	for(uint8_t i = 0; i < len; i++)
-		this->StreamWriteBinary(pgm_read_byte(&data[i]));
 }
 
 void pan1026::WaitForAnswer()
@@ -1090,7 +1273,12 @@ void pan1026::Step()
 				for (uint8_t i = 6; i > 0; i--)
 					this->StreamWrite(this->pan_mac_address[i-1]);
 			break;
-
+#ifdef BT_DISABLE_UART_RTSCTS
+			case(pan_cmd_disable_uart_rtscts_control):
+				DEBUG_BT("pan_cmd_disable_uart_rtscts_control\r\n");
+				RAW(TCU_HCI_DISABLE_UART_RTSCTS_CONTROL);
+			break;
+#endif
 			case(pan_cmd_set_mode):
 				DEBUG_BT("pan_cmd_set_mode\r\n");
 				_delay_ms(100);
@@ -1113,6 +1301,12 @@ void pan1026::Step()
 				fprintf_P(bt_pan1026_out, PSTR("%s"), this->label); //label name
 			break;
 
+			case(pan_cmd_le_mng_ssp_set_req3):
+				DEBUG_BT("pan_cmd_le_mng_ssp_set_req3\r\n");
+				RAW(TCU_LE_NMG_SSP_SET_REQ3);
+			break;
+
+			
 			case(pan_cmd_write_cod):
 				DEBUG_BT("pan_cmd_write_cod\r\n");
 				RAW(TCU_MNG_STANDARD_HCI_SET_REQ_Write_Class_of_Device);
@@ -1123,6 +1317,18 @@ void pan1026::Step()
 				RAW(TCU_SPP_SETUP_REQ);
 			break;
 
+			case(pan_cmd_le_mng_ssp_set_req4):
+				DEBUG_BT("pan_cmd_le_mng_ssp_set_req4\r\n");
+				RAW(TCU_LE_NMG_SSP_SET_REQ4);
+			break;
+			
+			case(pan_cmd_le_mng_ssp_set_req5):
+				DEBUG_BT("pan_cmd_le_mng_ssp_set_req5\r\n");
+				RAW(TCU_LE_NMG_SSP_SET_REQ5);
+			break;
+
+			
+			
 			case(pan_cmd_listen):
 				DEBUG_BT("pan_cmd_listen\r\n");
 				RAW(TCU_MNG_SET_SCAN_REQ);
@@ -1214,7 +1420,14 @@ void pan1026::Step()
 				DEBUG_BT("pan_cmd_le_gat_cli_init\r\n");
 				RAW(TCU_LE_GATT_CLI_INIT_REQ);
 			break;
-
+			case(pan_cmd_le_mng_ssp_set_req1):
+				DEBUG_BT("pan_cmd_le_mng_ssp_set_req1\r\n");
+				RAW(TCU_LE_NMG_SSP_SET_REQ1);
+			break;
+			case(pan_cmd_le_mng_ssp_set_req2):
+				DEBUG_BT("pan_cmd_le_mng_ssp_set_req2\r\n");
+				RAW(TCU_LE_NMG_SSP_SET_REQ2);
+			break;
 			case(pan_cmd_le_gat_sdb_add_primary_service):
 				DEBUG_BT("pan_cmd_le_gat_sdb_add_primary_service %d\r\n", this->cmd_iter);
 				t_len = 3 + 5 + ((this->cmd_iter != 2) ? 2 : 16);
@@ -1242,7 +1455,8 @@ void pan1026::Step()
 
 			case(pan_cmd_le_gat_sdb_add_characteristic):
 				DEBUG_BT("pan_cmd_le_gat_sdb_add_characteristic %d\r\n", this->cmd_iter);
-				t_len =  3 + 4 + 4 + ((this->cmd_iter != 5) ? 2 : 16);
+				//t_len =  3 + 4 + 4 + ((this->cmd_iter != 5) ? 2 : 16);
+				t_len =  3 + 4 + 4 + 2;
 				TCU_LEN(t_len);
 
 				//ServiceID
@@ -1323,11 +1537,11 @@ void pan1026::Step()
 					//handle
 					WRITE_16B(this->btle_service_handles[SERVICE_SPP]);
 					//Characteristic Properties
-					this->StreamWrite(0x28); //INDICATE | WRITE
+					this->StreamWrite(0x38); //NOTIFY | INDICATE | WRITE
 					//UUID Length
-					this->StreamWrite(0x10);
+					this->StreamWrite(0x2);
 					//UUID Value
-					RAW(spp_over_ble_characteristic_uuid);
+					WRITE_16B(0xFFE1);
 				}
 			break;
 
@@ -1345,7 +1559,7 @@ void pan1026::Step()
 				if (this->cmd_iter == 4)
 					t_len += 2 + 8;
 				if (this->cmd_iter == 5)
-					t_len += 16 + BTLE_SPP_BUFFER_SIZE;
+					t_len += 2 + BTLE_SPP_BUFFER_SIZE;
 				if (this->cmd_iter == 6)
 					t_len += 2 + 2;
 
@@ -1442,10 +1656,8 @@ void pan1026::Step()
 					//Attribute Value Length
 					WRITE_16B(8);
 					//Attribute Value
-					char tmp[23];
-					GetID_str(tmp);
 					for (uint8_t i = 0; i < 8; i++)
-						this->StreamWrite(tmp[i]);
+						this->StreamWrite(device_id[i]);
 					//Permissions
 					WRITE_16B(0);
 				}
@@ -1456,9 +1668,9 @@ void pan1026::Step()
 					//Characteristic handle
 					WRITE_16B(this->btle_characteristic_handles[CHAR_SPP_SPP]);
 					//Attribute Type Length
-					this->StreamWrite(0x10);
+					this->StreamWrite(0x02);
 					//Attribute Type
-					RAW(spp_over_ble_characteristic_uuid);
+					WRITE_16B(0xFFE1);
 					//Attribute Value Length
 					WRITE_16B(BTLE_SPP_BUFFER_SIZE);
 					//Attribute Value
@@ -1468,7 +1680,7 @@ void pan1026::Step()
 					WRITE_16B(0);
 				}
 
-				//spp_over_ble -> spp_over_ble2
+				//spp_over_ble -> spp_over_ble descriptor
 				if (this->cmd_iter == 6)
 				{
 					//Characteristic handle
@@ -1480,7 +1692,7 @@ void pan1026::Step()
 					//Attribute Value Length
 					WRITE_16B(2);
 					//Attribute Value
-					WRITE_16B(0);
+					WRITE_16B(this->btle_notifications);
 					//Permissions
 					WRITE_16B(0x0003); //GAT READ | GAT WRITE
 				}
@@ -1488,7 +1700,7 @@ void pan1026::Step()
 			break;
 
 			case(pan_cmd_le_gen_random_address):
-				DEBUG_BT("pan_cmd_le_gen_random_address\r\n");
+				DEBUG_BT("pan_cmd_le_gen_randvom_address\r\n");
 				RAW(TCU_MNG_LE_GEN_RESOLVABLE_BDADDR_REQ);
 			break;
 
@@ -1497,7 +1709,7 @@ void pan1026::Step()
 				RAW(TCU_MNG_LE_SET_RAND_ADDRESS_REQ);
 
 				for (uint8_t i = 0; i < 6; i++)
-					this->StreamWrite(this->random_address[i]);
+					this->StreamWrite(config.connectivity.btle_mac[i]);
 			break;
 
 			case(pan_cmd_le_start_advertise):
@@ -1519,7 +1731,7 @@ void pan1026::Step()
 				//Advertising_Type
 				this->StreamWrite(0x00); //9; Connectable undirected advertising
 				//Own_Address_Type
-				this->StreamWrite(0x01); //10; random address
+				this->StreamWrite(0x00);//0x01); //10; random address
 				//Direct_Address_Type
 				this->StreamWrite(0x00); //11; public address
 				//Direct_Address
@@ -1531,48 +1743,92 @@ void pan1026::Step()
 				//Adv_Data_Length
 				this->StreamWrite(0x1f); //31
 				//Adv_Data (31B)
-				this->StreamWrite(0x02); //length
-				this->StreamWrite(0x01); //AD flags
-				this->StreamWrite(0x01);
+					this->StreamWrite(0x02); //length
+					this->StreamWrite(0x01); //AD flags
+					this->StreamWrite(0x01);
 
-				//128-bits uuids (SPP)
-				this->StreamWrite(0x11); //Length 0x10 * cnt + 1
-				this->StreamWrite(0x07); //Complete list of 128-bit UUIDs available.
-				RAW(spp_over_ble_service_uuid); //SPP uuid 16B
+					//128-bits uuids (SPP)
+					this->StreamWrite(0x11); //Length 0x10 * cnt + 1
+					this->StreamWrite(0x07); //Complete list of 128-bit UUIDs available.
+					RAW(spp_over_ble_service_uuid); //SPP uuid 16B
 
-				//16-bits uuids (generic_access, device_information)
-				this->StreamWrite(0x05); //Length 0x02 * cnt + 1
-				this->StreamWrite(0x03); //Complete list of 16-bit UUIDs available.
-				//generic_access
-				WRITE_16B(0x1800);
-				//device_information
-				WRITE_16B(0x180A);
+					//16-bits uuids (generic_access, device_information)
+					this->StreamWrite(0x05); //Length 0x02 * cnt + 1
+					this->StreamWrite(0x03); //Complete list of 16-bit UUIDs available.
+					//generic_access
+					WRITE_16B(0x1800);
+					//device_information
+					WRITE_16B(0x180A);
 
-				//padding (4B)
-				this->StreamWrite(0x00);
-				this->StreamWrite(0x00);
-				this->StreamWrite(0x00);
-				this->StreamWrite(0x00);
+					//padding (4B)
+					this->StreamWrite(0x00);
+					this->StreamWrite(0x00);
+					this->StreamWrite(0x00);
+					this->StreamWrite(0x00);
+
+////----------
+//				//Adv_Data_Length
+//				this->StreamWrite(0x1f); //31
+//				//Adv_Data (31B)
+//					this->StreamWrite(0x02); //length
+//					this->StreamWrite(0x01); //AD flags
+//					this->StreamWrite(0x01);
+
+//					this->StreamWrite(0x07); //Length 0x10 * cnt + 1
+//					this->StreamWrite(0x01); //Complete list of 128-bit UUIDs available.
+//					//generic_access
+//					WRITE_16B(0x1800);
+//					//device_information
+////					WRITE_16B(0x180D);
+////					//
+////					WRITE_16B(0x180F);
+
+//					this->StreamWrite(strlen(this->label) + 1); //Length sizeof(device_name) + 1
+//					this->StreamWrite(0x09); //Complete local name
+//					for (uint8_t i = 0; i < strlen(this->label); i++)
+//						this->StreamWrite(this->label[i]);
+
+//					//padding
+//					for (uint8_t i = strlen(this->label)+2 ; i < 0x1f-7; i++)
+//						this->StreamWrite(0x00);
+////----------
 
 				//Scan_Resp_Data_Len
 				this->StreamWrite(0x1f); //31
 				//Scan_Resp_Data (31B)
-				this->StreamWrite(strlen(this->label) + 1); //Length sizeof(device_name) + 1
-				this->StreamWrite(0x09); //Complete local name
-				for (uint8_t i = 0; i < strlen(this->label); i++)
-					this->StreamWrite(this->label[i]);
+					this->StreamWrite(strlen(this->label) + 1); //Length sizeof(device_name) + 1
+					this->StreamWrite(0x09); //Complete local name
+					for (uint8_t i = 0; i < strlen(this->label); i++)
+						this->StreamWrite(this->label[i]);
 
-				//padding
-				for (uint8_t i = strlen(this->label) + 2; i < 0x1f; i++)
-					this->StreamWrite(0x00);
+					//padding
+					for (uint8_t i = strlen(this->label) + 2; i < 0x1f; i++)
+						this->StreamWrite(0x00);
 			break;
 
-			case(pan_cmd_le_update_char):
+			case(pan_cmd_le_update_char_element):
+				DEBUG_BT("pan_cmd_le_update_char_element\r\n");
+				t_len = 3 + 4 + 6;
 
+				TCU_LEN(t_len);
+
+				//ServiceID
+				this->StreamWrite(0xD3);
+				//OpCode
+				this->StreamWrite(0x25);
+				//Param length
+				WRITE_16B(t_len - 7);
+
+				//Characteristic handle
+				WRITE_16B(this->btle_characteristic_element_handles[CHAR_SPP_SPP_DESC]);
+				//Attribute Value Length
+				WRITE_16B(2);
+				//Attribute Value
+				WRITE_16B(this->btle_notifications);
 			break;
 
-			case(pan_cmd_le_val_accept):
-				DEBUG_BT("pan_cmd_le_val_accept\r\n");
+			case(pan_cmd_le_read_val_accept):
+				DEBUG_BT("pan_cmd_le_read_val_accept\r\n");
 				t_len = 3 + 4 + 5;
 				TCU_LEN(t_len);
 
@@ -1584,15 +1840,15 @@ void pan1026::Step()
 				//Parameter Length
 				WRITE_16B(t_len - 7); // 4
 				//Connection Handle
-				WRITE_16B(this->btle_connection_handles[0]);
+				WRITE_16B(this->btle_connection_handle);
 				//Status
 				this->StreamWrite(0x00); //Success
 				//Error Handle
 				WRITE_16B(0x0000); //Not valid
 			break;
 
-			case(pan_cmd_le_multiple_accept):
-				DEBUG_BT("pan_cmd_le_multiple_accept\r\n");
+			case(pan_cmd_le_read_multiple_accept):
+				DEBUG_BT("pan_cmd_le_read_multiple_accept\r\n");
 				t_len = 3 + 4 + 5;
 				TCU_LEN(t_len);
 
@@ -1604,11 +1860,94 @@ void pan1026::Step()
 				//Parameter Length
 				WRITE_16B(t_len - 7); // 4
 				//Connection Handle
-				WRITE_16B(this->btle_connection_handles[0]);
+				WRITE_16B(this->btle_connection_handle);
 				//Status
 				this->StreamWrite(0x00); //Success
 				//Error Handle
 				WRITE_16B(0x0000); //Not valid
+			break;
+
+			case(pan_cmd_le_write_val_accept):
+				DEBUG_BT("pan_cmd_le_write_val_accept\r\n");
+				t_len = 3 + 4 + 5;
+				TCU_LEN(t_len);
+
+				//ServiceID
+				this->StreamWrite(0xD3); // 1
+				//OpCode
+				this->StreamWrite(0x03); // 2
+
+				//Parameter Length
+				WRITE_16B(t_len - 7); // 4
+				//Connection Handle
+				WRITE_16B(this->btle_connection_handle);
+				//Status
+				this->StreamWrite(0x00); //Success
+				//Error Handle
+				WRITE_16B(0x0000); //Not valid
+			break;
+
+			case(pan_cmd_le_read_char_des_accept):
+				DEBUG_BT("pan_cmd_le_read_char_des_accept\r\n");
+				t_len = 3 + 4 + 5;
+				TCU_LEN(t_len);
+
+				//ServiceID
+				this->StreamWrite(0xD3); // 1
+				//OpCode
+				this->StreamWrite(0x08); // 2
+
+				//Parameter Length
+				WRITE_16B(t_len - 7); // 4
+				//Connection Handle
+				WRITE_16B(this->btle_connection_handle);
+				//Status
+				this->StreamWrite(0x00); //Success
+				//Error Handle
+				WRITE_16B(0x0000); //Not valid
+			break;
+
+			case(pan_cmd_le_write_char_des_accept):
+				DEBUG_BT("pan_cmd_le_write_char_des_accept\r\n");
+				t_len = 3 + 4 + 5;
+				TCU_LEN(t_len);
+
+				//ServiceID
+				this->StreamWrite(0xD3); // 1
+				//OpCode
+				this->StreamWrite(0x04); // 2
+
+				//Parameter Length
+				WRITE_16B(t_len - 7); // 4
+				//Connection Handle
+				WRITE_16B(this->btle_connection_handle);
+				//Status
+				this->StreamWrite(0x00); //Success
+				//Error Handle
+				WRITE_16B(0x0000); //Not valid
+			break;
+
+			case(pan_cmd_le_mtu_req):
+				DEBUG_BT("pan_cmd_le_mtu_req\r\n");
+				t_len = 3 + 8;
+				TCU_LEN(t_len);
+
+				//ServiceID
+				this->StreamWrite(0xD2); // 1
+				//OpCode
+				this->StreamWrite(0x01); // 2
+
+				//Parameter Length
+				WRITE_16B(t_len - 7); // 4
+				//Connection Handle
+				WRITE_16B(this->btle_connection_handle);
+				//MTU size
+				WRITE_16B(BTLE_SPP_BUFFER_SIZE); //Not valid
+			break;
+
+			case(pan_cmd_release_busy):
+				DEBUG_BT("pan_cmd_release_busy\r\n");
+			 	this->timer = task_get_ms_tick() + 100;
 			break;
 		}
 
@@ -1620,6 +1959,16 @@ void pan1026::Step()
 	{
 		this->repat_last_cmd = false;
 		this->next_cmd = this->last_cmd;
+		this->timer = BT_NO_TIMEOUT;
+	}
+
+	if (this->last_cmd == pan_cmd_release_busy && this->timer < task_get_ms_tick())
+	{
+		DEBUG_BT("Releasing busy flag\r\n");
+
+		this->busy = false;
+		this->last_cmd = pan_cmd_none;
+		this->timer = BT_NO_TIMEOUT;
 	}
 
 //	if (this->timer != BT_NO_TIMEOUT && this->timer < task_get_ms_tick())
@@ -1630,32 +1979,94 @@ void pan1026::Step()
 
 }
 
+bool pan1026::Idle()
+{
+	if (this->busy)
+	{
+		DEBUG_BT("BT BUSY with cmd %d\r\n", this->last_cmd);
+		return false;
+	}
+	else
+		return true;
+}
+
 void pan1026::SendString(char * str)
 {
-	DEBUG_BT("\r\nUART SEND DATA TO TC35661:\r\n");
 	uint16_t len = strlen(str);
 
-	TCU_LEN(len + 3 + 1 + 1 + 2 + 2);
-	this->StreamWrite(0xe5); //SPP
-	this->StreamWrite(0x08); //TCU_SPP_DATA_TRANSFER_REQ
-	WRITE_16B(len + 2); 	 //Parameter Length
-	WRITE_16B(len);			 //Length_of_Data
-	//data
-	for (uint16_t i = 0; i < len; i++)
-		this->StreamWrite(str[i]);
-	
-	DEBUG_BT("\r\nend.\r\n");
-}
+	if (!this->Idle())
+		return;
 
-void pan1026::SendBinary(char * str,uint16_t len)
-{
-	TCU_LEN(len + 3 + 1 + 1 + 2 + 2);
-	this->StreamWrite(0xe5); //SPP
-	this->StreamWrite(0x08); //TCU_SPP_DATA_TRANSFER_REQ
-	WRITE_16B(len + 2); 	 //Parameter Length
-	WRITE_16B(len);			 //Length_of_Data
-	//data
-	for (uint16_t i = 0; i < len; i++)
-		this->StreamWrite(str[i]);
-}
+	if (this->btle_connection)
+	{
+		uint16_t t_len;
 
+		if (this->btle_notifications & BTLE_INDICATION)
+		{
+			DEBUG_BT("Sending indication\r\n");
+			t_len = 3 + 8 + len;
+			TCU_LEN(t_len);
+
+			//ServiceID
+			this->StreamWrite(0xD3); // 1
+			//OpCode
+			this->StreamWrite(0x06); // 2
+
+			//Parameter Length
+			WRITE_16B(t_len - 7); // 4
+			//Connection Handle
+			WRITE_16B(this->btle_connection_handle);// 6
+			//Characteristic Handle
+			WRITE_16B(this->btle_characteristic_element_handles[CHAR_SPP_SPP]);// 8
+			//data
+			for (uint8_t i = 0 ; i < len; i++)
+				this->StreamWrite(str[i]);
+
+			this->last_cmd = pan_cmd_le_val_indication;
+			this->busy = true;
+
+			return;
+		}
+
+		if (this->btle_notifications & BTLE_NOTIFICATION)
+		{
+			DEBUG_BT("Sending notification\r\n");
+			t_len = 3 + 8 + len;
+			TCU_LEN(t_len);
+
+			//ServiceID
+			this->StreamWrite(0xD3); // 1
+			//OpCode
+			this->StreamWrite(0x05); // 2
+
+			//Parameter Length
+			WRITE_16B(t_len - 7); // 4
+			//Connection Handle
+			WRITE_16B(this->btle_connection_handle);// 6
+			//Characteristic Handle
+			WRITE_16B(this->btle_characteristic_element_handles[CHAR_SPP_SPP]);// 8
+			//data
+			for (uint8_t i = 0 ; i < len; i++)
+				this->StreamWrite(str[i]);
+
+			this->last_cmd = pan_cmd_le_val_notification;
+			this->busy = true;
+
+			return;
+		}
+	}
+	else
+	{
+		TCU_LEN(len + 3 + 1 + 1 + 2 + 2);
+		this->StreamWrite(0xe5); //SPP
+		this->StreamWrite(0x08); //TCU_SPP_DATA_TRANSFER_REQ
+		WRITE_16B(len + 2); 	 //Parameter Length
+		WRITE_16B(len);			 //Length_of_Data
+		//data
+		for (uint16_t i = 0; i < len; i++)
+			this->StreamWrite(str[i]);
+
+		this->last_cmd = pan_cmd_spp_send;
+		this->busy = true;
+	}
+}

@@ -523,16 +523,6 @@
               <FilePath>..\bt_src\drivers\bluetooth\pan1026.cpp</FilePath>
             </File>
             <File>
-              <FileName>pan1322.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\bt_src\drivers\bluetooth\pan1322.h</FilePath>
-            </File>
-            <File>
-              <FileName>pan1322.cpp</FileName>
-              <FileType>8</FileType>
-              <FilePath>..\bt_src\drivers\bluetooth\pan1322.cpp</FilePath>
-            </File>
-            <File>
               <FileName>bt.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\bt_src\drivers\bluetooth\bt.h</FilePath>

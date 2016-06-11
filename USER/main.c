@@ -79,7 +79,7 @@ int main ( void )
 			ms_delay_counter = 0;
 			if( ledstat ){
 				LED1_ON;
-				if(C_bt_device_active() && (active <10) ){
+				if(C_bt_device_active() && (active <3) ){
 					active++;
 					C_bt_send("test str");
 				}

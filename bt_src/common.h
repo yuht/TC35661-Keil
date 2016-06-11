@@ -8,13 +8,15 @@
 #ifndef COMMON_H_
 #define COMMON_H_
 
-//#define DEBUG_BT_ENABLED
+#define DEBUG_BT_ENABLED
 
 #ifdef DEBUG_BT_ENABLED
 	#define DEBUG_BT(...) DEBUG(__VA_ARGS__)
 #else
 	#define DEBUG_BT(...)
 #endif
+
+#define BT_DISABLE_UART_RTSCTS //½ûÓÃÁ÷¿Ø
 
 
 
@@ -45,7 +47,7 @@
 #define PSTR(A) 		(char *)(A)
 #define strcpy_P(A,B)   \
 		do{\
-			strcpy (A,"Yuht_TC35661");	\
+			strcpy (A,"Yuht_TC35661-501");	\
 			DEBUG_BT("%s\r\n" ,A);	\
 		}while(0);
 

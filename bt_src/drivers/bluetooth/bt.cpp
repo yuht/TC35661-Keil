@@ -2,7 +2,7 @@
 
 #include "../../fc/conf.h"
 
-#include "pan1322.h"
+//#include "pan1322.h"
 #include "pan1026.h"
 
 
@@ -10,7 +10,7 @@ bool bt_autodetect = false;
 uint8_t bt_module_type = BT_PAN1322;
 
 pan1026 bt_pan1026;
-pan1322 bt_pan1322;
+//pan1322 bt_pan1322;
 
 Usart bt_uart;
 
@@ -24,19 +24,19 @@ volatile uint8_t bt_module_state = BT_MOD_STATE_OFF;
 ISR(BT_CTS_PIN_INT)
 {
 	DEBUG_BT("BT CTS\r\n");
-	if (bt_module_type == BT_PAN1322)
-		bt_pan1322.TxResume();
+//	if (bt_module_type == BT_PAN1322)
+//		bt_pan1322.TxResume();
 
-	if (bt_module_type == BT_PAN1026)
+//	if (bt_module_type == BT_PAN1026)
 		bt_pan1026.TxResume();
 }
 
-void bt_pan1322_init()
-{
-	DEBUG_BT("bt_pan1322_init\r\n");
+//void bt_pan1322_init()
+//{
+//	DEBUG_BT("bt_pan1322_init\r\n");
 
-	bt_pan1322.Init(&bt_uart);
-}
+//	bt_pan1322.Init(&bt_uart);
+//}
 
 void bt_pan1026_init()
 {
@@ -50,7 +50,7 @@ void bt_module_deinit()
 	GpioWrite(BT_EN, LOW);
 	GpioWrite(BT_RESET, LOW);
 
-	bt_irgh(BT_IRQ_DEINIT, 0);
+	bt_irqh(BT_IRQ_DEINIT, 0);
 	bt_uart.Stop();
 	BT_UART_PWR_OFF;
 }
@@ -70,22 +70,22 @@ void bt_module_reset()
 void bt_module_init()
 {
 	//module specific code
-	switch (bt_module_type)
-	{
-		case(BT_PAN1322):
-			bt_pan1322_init();
-		break;
+//	switch (bt_module_type)
+//	{
+//		case(BT_PAN1322):
+//			bt_pan1322_init();
+//		break;
 
-		case(BT_PAN1026):
+//		case(BT_PAN1026):
 			bt_pan1026_init();
-		break;
+//		break;
 
-		default: //UNKNOWN module
-			bt_autodetect = true;
-			bt_module_type = BT_PAN1322;
-			bt_pan1322_init();
-		break;
-	}
+//		default: //UNKNOWN module
+//			bt_autodetect = true;
+//			bt_module_type = BT_PAN1322;
+//			bt_pan1322_init();
+//		break;
+//	}
 
 }
 
@@ -176,14 +176,14 @@ void bt_step()
 		return;
 	}
 
-	if (bt_module_type == BT_PAN1322)
-		bt_pan1322.Step();
+//	if (bt_module_type == BT_PAN1322)
+//		bt_pan1322.Step();
 
-	if (bt_module_type == BT_PAN1026)
+//	if (bt_module_type == BT_PAN1026)
 		bt_pan1026.Step();
 
-	if (bt_module_type == BT_UNKNOWN)
-		bt_unknown_parser();
+//	if (bt_module_type == BT_UNKNOWN)
+//		bt_unknown_parser();
 }
 
 void bt_send(char * str)
@@ -191,10 +191,10 @@ void bt_send(char * str)
 	if (!bt_device_connected)
 		return;
 
-	if (bt_module_type == BT_PAN1322)
-		bt_pan1322.SendString(str);
+//	if (bt_module_type == BT_PAN1322)
+//		bt_pan1322.SendString(str);
 
-	if (bt_module_type == BT_PAN1026)
+//	if (bt_module_type == BT_PAN1026)
 		bt_pan1026.SendString(str);
 }
 void bt_sendBinary(char * str,uint16_t len)
@@ -202,10 +202,10 @@ void bt_sendBinary(char * str,uint16_t len)
 	if (!bt_device_connected)
 		return;
 	
-	bt_pan1026.SendBinary(str,len);
+//	bt_pan1026.SendBinary(str,len);
 }
 
-void bt_irgh(uint8_t type, uint8_t * buf)
+void bt_irqh(uint8_t type, uint8_t * buf)
 {
 	uint8_t old_type;
 
@@ -252,17 +252,17 @@ void bt_irgh(uint8_t type, uint8_t * buf)
 
 				BT_UART_PWR_ON;
 
-				if (old_type == BT_PAN1322)
-				{
+//				if (old_type == BT_PAN1322)
+//				{
 					bt_module_type = BT_PAN1026;
 					bt_pan1026_init();
-				}
+//				}
 
-				if (old_type == BT_PAN1026)
-				{
-					bt_module_type = BT_PAN1322;
-					bt_pan1322_init();
-				}
+//				if (old_type == BT_PAN1026)
+//				{
+//					bt_module_type = BT_PAN1322;
+//					bt_pan1322_init();
+//				}
 
 			}
 			else
