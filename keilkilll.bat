@@ -1,6 +1,7 @@
 @echo off
 rd Listing /s /q
 rd Object /s /q
+rd USER\DebugConfig /s /q
 
 del *.bak /s
 del *.ddk /s
