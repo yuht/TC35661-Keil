@@ -1,5 +1,7 @@
 # TC35661-Keil
 use stm32f103r8tb driver tc35661
+Finished. 
+If has some ERR , please PULL ISSUES
 
 # wire conn
 stm32 uart1 => PC
